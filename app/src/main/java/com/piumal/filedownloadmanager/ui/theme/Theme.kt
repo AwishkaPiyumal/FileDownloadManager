@@ -1,6 +1,6 @@
 package com.piumal.filedownloadmanager.ui.theme
 
-import android.app.Activity
+import androidx.compose.ui.graphics.Color
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -12,15 +12,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = GreenJC,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = PrimaryBlue,
+    onPrimary = Color.White,
+    surface = Color(0xFF121212),
+    onSurface = Color.White,
+    background = Color(0xFF121212),
+    onBackground = Color.White,
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+    primary = PrimaryBlue,
+    onPrimary = Color.White,
+    surface = Color.White,
+    onSurface = Color.Black,
+    background = Color.White,
+    onBackground = Color.Black
 
     /* Other default colors to override
     background = Color(0xFFFFFBFE),

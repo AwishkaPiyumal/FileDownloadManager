@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Theme.FileDownloadManager" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <item name="colorControlNormal">#797979</item>
+        <item name="colorControlNormal">#BDBDBD</item>
     </style>
 </resources>

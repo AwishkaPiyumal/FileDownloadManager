@@ -14,11 +14,11 @@ import com.piumal.filedownloadmanager.ui.settings.SettingsScreen
 fun NavigationGraph(navController: NavHostController) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Home.route
+        startDestination = Screen.Downloads.route
     ) {
-        composable(Screen.Home.route) {
+       /* composable(Screen.Home.route) {
             HomeScreen()
-        }
+        }*/
         composable(Screen.Downloads.route) {
             DownloadScreen()
         }
