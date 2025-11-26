@@ -34,7 +34,7 @@ val context = LocalContext.current
         drawerShape = RoundedCornerShape(topEnd = 0.dp, bottomEnd = 0.dp)
     ) {
         Column(modifier = Modifier.fillMaxHeight()) {
-            // Header
+
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(bottomStart = 10.dp, bottomEnd = 10.dp))
