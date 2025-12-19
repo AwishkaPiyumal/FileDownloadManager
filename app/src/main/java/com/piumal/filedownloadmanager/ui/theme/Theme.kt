@@ -12,21 +12,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = PrimaryBlue,
-    onPrimary = Color.White,
-    surface = Color(0xFF121212),
-    onSurface = Color.White,
-    background = Color(0xFF121212),
-    onBackground = Color.White,
+    primary = DarkPrimaryBlue,
+    onPrimary = White,
+    secondary = Blue600,
+    onSecondary = White,
+    surface = DarkSurfaceBg,
+    onSurface = White,
+    background = Dark900,
+    onBackground = White,
+
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = PrimaryBlue,
-    onPrimary = Color.White,
-    surface = Color.White,
-    onSurface = Color.Black,
-    background = Color.White,
-    onBackground = Color.Black
+    primary = Blue600,
+    onPrimary = White,
+    secondary = Blue600,
+    onSecondary = Gray600,
+    surface = SurfaceBg,
+    onSurface = Gray600,
+    background = White,
+    onBackground = Gray600,
+    error= Red900,
+    onError= Color.White
 
     /* Other default colors to override
     background = Color(0xFFFFFBFE),
@@ -43,7 +50,7 @@ private val LightColorScheme = lightColorScheme(
 fun FileDownloadManagerTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,  // Disabled to use custom colors
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
