@@ -5,10 +5,11 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.piumal.filedownloadmanager.ui.about.AboutScreen
 import com.piumal.filedownloadmanager.ui.browser.BrowserScreen
 import com.piumal.filedownloadmanager.ui.downloads.DownloadScreen
-import com.piumal.filedownloadmanager.ui.home.HomeScreen
 import com.piumal.filedownloadmanager.ui.settings.SettingsScreen
+import com.piumal.filedownloadmanager.ui.support.SupportScreen
 
 @Composable
 fun NavigationGraph(navController: NavHostController) {
@@ -28,5 +29,14 @@ fun NavigationGraph(navController: NavHostController) {
         composable(Screen.Settings.route) {
             SettingsScreen()
         }
+        composable(Screen.Support.route) {
+            SupportScreen()
+        }
+
+        composable(Screen.About.route){
+            AboutScreen()
+        }
+
+
     }
 }

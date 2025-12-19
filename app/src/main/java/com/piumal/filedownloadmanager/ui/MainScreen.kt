@@ -3,17 +3,18 @@
 package com.piumal.filedownloadmanager.ui
 
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -22,8 +23,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.piumal.filedownloadmanager.ui.components.AppDrawer
 import com.piumal.filedownloadmanager.ui.navigation.NavigationGraph
+import androidx.compose.ui.draw.clip
 import com.piumal.filedownloadmanager.ui.theme.FileDownloadManagerTheme
-import com.piumal.filedownloadmanager.ui.theme.PrimaryBlue
 import kotlinx.coroutines.launch
 @Composable
 fun MainScreen(
@@ -54,54 +55,67 @@ fun MainScreen(
     ) {
         Scaffold(
             topBar = {
-                CenterAlignedTopAppBar(
-                    modifier = Modifier.height(105.dp),
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(bottomStart = 10.dp, bottomEnd = 10.dp)),
+                    color = MaterialTheme.colorScheme.primary
+                ) {
+                    CenterAlignedTopAppBar(
+                        modifier = Modifier.height(105.dp),
 
-                    title = { Text("File Download Manager",
-                            style=MaterialTheme.typography.titleLarge,
-                            modifier=Modifier
-                                .fillMaxHeight()
-                                .wrapContentHeight(Alignment.CenterVertically),
-                                     maxLines = 1
+                        title = {
+                            Text(
+                                "File Download Manager",
+                                style = MaterialTheme.typography.titleLarge,
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .wrapContentHeight(Alignment.CenterVertically),
+                                maxLines = 1
 
                             )
-                            },
+                        },
 
 
-                    navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } },
-                            modifier= Modifier
-                                .fillMaxHeight()
-                                .padding(start = 16.dp, end = 4.dp)
-                        ) {
-                            Icon(painter = painterResource(id = com.piumal.filedownloadmanager.R.drawable.menu_24px),
-                                contentDescription = "Menu",
-                                tint = Color.White,
-                                modifier = Modifier.size(35.dp)
-                            )
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { /* handle more actions */ },
+                        navigationIcon = {
+                            IconButton(
+                                onClick = { scope.launch { drawerState.open() } },
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .padding(start = 16.dp, end = 4.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = com.piumal.filedownloadmanager.R.drawable.menu_24px),
+                                    contentDescription = "Menu",
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(35.dp)
+                                )
+                            }
+                        },
+                        actions = {
+                            IconButton(
+                                onClick = { /* handle more actions */ },
 
-                            modifier= Modifier
-                                .fillMaxHeight()
-                               //.padding(16.dp)
-                        ) {
-                            Icon(
-                                painter = painterResource(id = com.piumal.filedownloadmanager.R.drawable.more_vert_24px),
-                                contentDescription = "More",
-                                tint = Color.White,
-                                modifier = Modifier.padding(end = 16.dp).size(30.dp)
-                            )
-                        }
-                    },
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                //.padding(16.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = com.piumal.filedownloadmanager.R.drawable.more_vert_24px),
+                                    contentDescription = "More",
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.padding(end = 16.dp).size(30.dp)
+                                )
+                            }
+                        },
 
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = PrimaryBlue,
-                        titleContentColor = Color.White,
-                        navigationIconContentColor = Color.White)
-                )
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                            navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    )
+                }
             }
         ) { paddingValues ->
             Surface(modifier = modifier.padding(paddingValues)) {
