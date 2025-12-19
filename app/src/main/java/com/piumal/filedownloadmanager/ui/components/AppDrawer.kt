@@ -11,14 +11,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.piumal.filedownloadmanager.ui.navigation.bottomNavItems
-import com.piumal.filedownloadmanager.ui.theme.GrayText
-import com.piumal.filedownloadmanager.ui.theme.PrimaryBlue
+import com.piumal.filedownloadmanager.ui.theme.FileDownloadManagerTheme
+import com.piumal.filedownloadmanager.ui.theme.White
 
 @Composable
 fun AppDrawer(
@@ -31,14 +30,15 @@ val context = LocalContext.current
 
     ModalDrawerSheet(
         modifier = Modifier.width(280.dp),
-        drawerShape = RoundedCornerShape(topEnd = 0.dp, bottomEnd = 0.dp)
+        drawerShape = RoundedCornerShape(topEnd = 0.dp, bottomEnd = 0.dp),
+        drawerContainerColor = MaterialTheme.colorScheme.background
     ) {
         Column(modifier = Modifier.fillMaxHeight()) {
 
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(bottomStart = 10.dp, bottomEnd = 10.dp))
-                    .background(PrimaryBlue)
+                    .background(MaterialTheme.colorScheme.primary)
                     .fillMaxWidth()
                     .height(80.dp)
                     .padding(16.dp),
@@ -52,7 +52,7 @@ val context = LocalContext.current
                         Icon(
                             painter = painterResource(com.piumal.filedownloadmanager.R.drawable.menu_open_24px),
                             contentDescription = "menu open icon",
-                            tint = Color.White,
+                            tint = White,
                             modifier = Modifier.size(35.dp)
                         )
                     }
@@ -60,7 +60,7 @@ val context = LocalContext.current
                         Text(
                             text = "File Download Manager",
                             style = MaterialTheme.typography.headlineSmall,
-                            color = Color.White,
+                            color = White,
                             maxLines = 1
                         )
                     }
@@ -77,7 +77,7 @@ val context = LocalContext.current
                         label = {
                             Text(
                                 text = screen.title,
-                                color = GrayText,
+                                color = MaterialTheme.colorScheme.onSecondary,
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         },
@@ -88,14 +88,14 @@ val context = LocalContext.current
                                     Icon(
                                         imageVector = screen.icon,
                                         contentDescription = screen.title,
-                                        tint = GrayText
+                                        tint = MaterialTheme.colorScheme.onSecondary
                                     )
                                 }
                                 screen.iconRes != null -> {
                                     Icon(
                                         painter = painterResource(id = screen.iconRes),
                                         contentDescription = screen.title,
-                                        tint = GrayText
+                                        tint = MaterialTheme.colorScheme.onSecondary
                                     )
                                 }
                             }
@@ -104,6 +104,12 @@ val context = LocalContext.current
                             onNavigate(screen.route)
                             onCloseDrawer()
                         },
+                        colors = NavigationDrawerItemDefaults.colors(
+                            unselectedTextColor = MaterialTheme.colorScheme.onSecondary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSecondary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            selectedIconColor = MaterialTheme.colorScheme.primary
+                        ),
                         modifier = Modifier.padding(horizontal = 8.dp)
                     )
                 }
@@ -113,7 +119,7 @@ val context = LocalContext.current
                 label = {
                     Text(
                         text = "Exit",
-                        color = GrayText,
+                        color = MaterialTheme.colorScheme.onSecondary,
                         style = MaterialTheme.typography.bodyMedium
                     )
                 },
@@ -122,7 +128,7 @@ val context = LocalContext.current
                     Icon(
                         painter = painterResource(com.piumal.filedownloadmanager.R.drawable.logout_24px),
                         contentDescription = "Exit",
-                        tint = GrayText
+                        tint = MaterialTheme.colorScheme.onSecondary
                     )
                 },
                 onClick = {
@@ -139,13 +145,28 @@ val context = LocalContext.current
     }
 }
 
-@Preview
+@Preview(name = "Light Mode", showBackground = true)
 @Composable
-fun AppDrawerPreview() {
-    AppDrawer(
-        currentRoute = "home",
-        onNavigate = {},
-        onCloseDrawer = {},
-        onExit = { /* preview-safe no-op */ }
-    )
+fun AppDrawerLightPreview() {
+    FileDownloadManagerTheme(darkTheme = false) {
+        AppDrawer(
+            currentRoute = "downloads",
+            onNavigate = {},
+            onCloseDrawer = {},
+            onExit = {}
+        )
+    }
+}
+
+@Preview(name = "Dark Mode", showBackground = true)
+@Composable
+fun AppDrawerDarkPreview() {
+    FileDownloadManagerTheme(darkTheme = true) {
+        AppDrawer(
+            currentRoute = "downloads",
+            onNavigate = {},
+            onCloseDrawer = {},
+            onExit = {}
+        )
+    }
 }
