@@ -116,18 +116,7 @@ fun AddDownloadDialog(
                         unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                         cursorColor = MaterialTheme.colorScheme.primary
                     ),
-                    trailingIcon = {
-                        IconButton(onClick = {
-                            // TODO: Open folder picker
-                            // This will be implemented with Activity Result API in the future
-                        }) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.folder_24px),
-                                contentDescription = "Select Folder",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    },
+
                     singleLine = true
                 )
 
