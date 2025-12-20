@@ -10,8 +10,10 @@ val LightBlueBG = Color(0xFFE2F0FF)
 val White = Color(0xFFFFFFFF)
 val SurfaceBg = Color(0xFFF6F6F6)
 val Red900 = Color(0xFFB00020)
-//dark theme
+val Amber500 = Color(0xFFFF9800)  // For paused status
 
+//dark theme
+val Green500 = Color(0xFF00a800)
 val DarkPrimaryBlue = Color(0xFF144885)
 val Dark900 =Color(0xFF181818)
 
