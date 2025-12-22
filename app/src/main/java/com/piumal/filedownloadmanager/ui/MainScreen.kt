@@ -31,6 +31,21 @@ import com.piumal.filedownloadmanager.ui.downloads.viewmodel.MoreOptionsViewMode
 import com.piumal.filedownloadmanager.ui.navigation.NavigationGraph
 import com.piumal.filedownloadmanager.ui.theme.FileDownloadManagerTheme
 import kotlinx.coroutines.launch
+
+/**
+ * Get the title for Top App Bar based on current route
+ */
+fun getScreenTitle(route: String): String {
+    return when (route) {
+        "downloads" -> "Downloads"
+        "browser" -> "Browser"
+        "settings" -> "Settings"
+        "help" -> "Help & Support"
+        "info" -> "About"
+        else -> "File Download Manager"
+    }
+}
+
 @Composable
 fun MainScreen(
     navController: NavHostController,
@@ -75,16 +90,14 @@ fun MainScreen(
 
                         title = {
                             Text(
-                                "File Download Manager",
+                                getScreenTitle(currentRoute),
                                 style = MaterialTheme.typography.titleLarge,
                                 modifier = Modifier
                                     .fillMaxHeight()
                                     .wrapContentHeight(Alignment.CenterVertically),
                                 maxLines = 1
-
                             )
                         },
-
 
                         navigationIcon = {
                             IconButton(
@@ -102,31 +115,34 @@ fun MainScreen(
                             }
                         },
                         actions = {
-                            // Box wrapper to position the dropdown menu correctly
-                            Box {
-                                IconButton(
-                                    onClick = { moreOptionsViewModel.toggleMenu() },
-                                    modifier = Modifier
-                                        .fillMaxHeight()
-                                ) {
-                                    Icon(
-                                        painter = painterResource(id = com.piumal.filedownloadmanager.R.drawable.more_vert_24px),
-                                        contentDescription = "More",
-                                        tint = MaterialTheme.colorScheme.onPrimary,
+                            // Show more_vert icon only on downloads screen
+                            if (currentRoute == "downloads") {
+                                // Box wrapper to position the dropdown menu correctly
+                                Box {
+                                    IconButton(
+                                        onClick = { moreOptionsViewModel.toggleMenu() },
                                         modifier = Modifier
-                                            .padding(end = 16.dp)
-                                            .size(30.dp)
+                                            .fillMaxHeight()
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(id = com.piumal.filedownloadmanager.R.drawable.more_vert_24px),
+                                            contentDescription = "More",
+                                            tint = MaterialTheme.colorScheme.onPrimary,
+                                            modifier = Modifier
+                                                .padding(end = 16.dp)
+                                                .size(30.dp)
+                                        )
+                                    }
+
+                                    // Dropdown menu appears near the icon button
+                                    MoreOptionsMenu(
+                                        expanded = isMenuExpanded,
+                                        onDismiss = { moreOptionsViewModel.hideMenu() },
+                                        onMenuItemClick = { action ->
+                                            moreOptionsViewModel.onMenuItemSelected(action)
+                                        }
                                     )
                                 }
-
-                                // Dropdown menu appears near the icon button
-                                MoreOptionsMenu(
-                                    expanded = isMenuExpanded,
-                                    onDismiss = { moreOptionsViewModel.hideMenu() },
-                                    onMenuItemClick = { action ->
-                                        moreOptionsViewModel.onMenuItemSelected(action)
-                                    }
-                                )
                             }
                         },
 
