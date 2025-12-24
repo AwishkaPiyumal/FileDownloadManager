@@ -159,12 +159,12 @@ fun DownloadItemMoreOption(
     }
 }
 sealed class DownloadItemMoreMenuAction {
-    object Open : DownloadItemMoreMenuAction()
-    object ShowInFolder : DownloadItemMoreMenuAction()
-    object ShareFile : DownloadItemMoreMenuAction()
-    object ShowInfo : DownloadItemMoreMenuAction()
-    object RenameFile : DownloadItemMoreMenuAction()
-    object Moveto : DownloadItemMoreMenuAction()
-    object Deletefile : DownloadItemMoreMenuAction()
-    object Removefromlist : DownloadItemMoreMenuAction()
+    data object Open : DownloadItemMoreMenuAction()
+    data object ShowInFolder : DownloadItemMoreMenuAction()
+    data object ShareFile : DownloadItemMoreMenuAction()
+    data object ShowInfo : DownloadItemMoreMenuAction()
+    data object RenameFile : DownloadItemMoreMenuAction()
+    data object Moveto : DownloadItemMoreMenuAction()
+    data object Deletefile : DownloadItemMoreMenuAction()
+    data object Removefromlist : DownloadItemMoreMenuAction()
 }

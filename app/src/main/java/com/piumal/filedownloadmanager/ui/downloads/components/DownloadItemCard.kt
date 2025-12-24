@@ -9,6 +9,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.res.painterResource
 import com.piumal.filedownloadmanager.R
 import com.piumal.filedownloadmanager.domain.model.DownloadItem
 import com.piumal.filedownloadmanager.domain.model.DownloadStatus
@@ -30,6 +37,7 @@ fun DownloadItemCard(
     onMoreClick: (DownloadItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showMoreMenu by remember { mutableStateOf(false) }
     // Theme colors
     val colorScheme = MaterialTheme.colorScheme
     val typography = MaterialTheme.typography
@@ -63,7 +71,7 @@ fun DownloadItemCard(
 
             // More options button
             IconButton(
-                onClick = { onMoreClick(downloadItem) },
+                onClick = { showMoreMenu = true },
                 modifier = Modifier.size(24.dp)
             ) {
                 Icon(
@@ -72,6 +80,39 @@ fun DownloadItemCard(
                     tint = colorScheme.onSurface
                 )
             }
+            DownloadItemMoreOption(
+                expanded = showMoreMenu,
+                onDismiss = { showMoreMenu = false },
+                onMenuItemClick = { action ->
+                    when(action){
+                        is DownloadItemMoreMenuAction.Open -> {
+                            // Handle Open action
+                        }
+                        is DownloadItemMoreMenuAction.ShowInFolder -> {
+                            // Handle Show in Folder action
+                        }
+                        is DownloadItemMoreMenuAction.ShareFile -> {
+                            // Handle Share File action
+                        }
+                        is DownloadItemMoreMenuAction.ShowInfo -> {
+                            // Handle Show Info action
+                        }
+                        is DownloadItemMoreMenuAction.RenameFile -> {
+                            // Handle Show Info action
+                        }
+                        is DownloadItemMoreMenuAction.Moveto -> {
+                            // Handle Show Info action
+                        }
+                        is DownloadItemMoreMenuAction.Deletefile -> {
+                            // Handle Show Info action
+                        }
+                        is DownloadItemMoreMenuAction.Removefromlist -> {
+                            // Handle Show Info action
+                        }
+                    }
+                }
+            )
+
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -191,6 +232,9 @@ private fun getStatusColor(status: DownloadStatus, colorScheme: ColorScheme): an
         DownloadStatus.QUEUED -> colorScheme.onSurfaceVariant
     }
 }
+
+
+//More options menu
 
 /**
  * Preview for downloading state
