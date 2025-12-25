@@ -42,6 +42,9 @@ fun AddDownloadDialog(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    // Local state for validation errors
+    var validationError by remember { mutableStateOf<String?>(null) }
+
     // Initialize on first composition
     LaunchedEffect(Unit) {
         viewModel.initialize()
@@ -166,12 +169,36 @@ fun AddDownloadDialog(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
+                // Show validation error if exists
+                if (validationError != null) {
+                    Text(
+                        text = validationError!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
                 // Download Button
                 Button(
                     onClick = {
                         if (viewModel.isValid()) {
-                            onDownload(viewModel.getDownloadConfig())
-                            viewModel.reset()
+                            // Validate URL with ContentValidator (Google Policy Compliance)
+                            val validation = com.piumal.filedownloadmanager.domain.util.ContentValidator
+                                .validateDownloadUrl(uiState.url)
+
+                            if (!validation.isValid) {
+                                // Show error message
+                                validationError = validation.message
+                            } else if (validation.requiresWarning && validation.warningMessage != null) {
+                                // Show warning as error message (no dialog)
+                                validationError = validation.warningMessage
+                            } else {
+                                // Proceed with download
+                                onDownload(viewModel.getDownloadConfig())
+                                viewModel.reset()
+                            }
                         }
                     },
                     modifier = Modifier
@@ -207,8 +234,7 @@ fun AddDownloadDialog(
 @Composable
 private fun createAddDownloadViewModel(): AddDownloadViewModel {
     val context = LocalContext.current
-    val clipboardRepository = remember { ClipboardRepositoryImpl(context) }
-    val getClipboardUrlUseCase = remember { GetClipboardUrlUseCase(clipboardRepository) }
+    val getClipboardUrlUseCase = remember { GetClipboardUrlUseCase(context) }
     val extractFileNameUseCase = remember { ExtractFileNameUseCase() }
 
     return viewModel {

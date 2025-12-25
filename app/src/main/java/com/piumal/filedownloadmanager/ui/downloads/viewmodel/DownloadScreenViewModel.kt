@@ -2,10 +2,13 @@ package com.piumal.filedownloadmanager.ui.downloads.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.piumal.filedownloadmanager.domain.model.DownloadConfig
 import com.piumal.filedownloadmanager.domain.model.DownloadItem
+import com.piumal.filedownloadmanager.domain.repository.DownloadRepository
 import com.piumal.filedownloadmanager.domain.usecase.DownloadFilterType
 import com.piumal.filedownloadmanager.domain.usecase.FilterDownloadsUseCase
 import com.piumal.filedownloadmanager.domain.usecase.SortDownloadsUseCase
+import com.piumal.filedownloadmanager.domain.usecase.StartDownloadUseCase
 import com.piumal.filedownloadmanager.ui.downloads.components.SortOption
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,11 +23,15 @@ import javax.inject.Inject
  * Manages UI state and business logic
  * Follows MVVM architecture pattern
  * Uses Clean Architecture with Use Cases
+ *
+ * UPDATED: Integrated with real download functionality
  */
 @HiltViewModel
 class DownloadScreenViewModel @Inject constructor(
     private val sortDownloadsUseCase: SortDownloadsUseCase,
-    private val filterDownloadsUseCase: FilterDownloadsUseCase
+    private val filterDownloadsUseCase: FilterDownloadsUseCase,
+    private val startDownloadUseCase: StartDownloadUseCase,
+    private val downloadRepository: DownloadRepository
 ) : ViewModel() {
 
     // Private mutable state
@@ -34,11 +41,71 @@ class DownloadScreenViewModel @Inject constructor(
     val uiState: StateFlow<DownloadScreenUiState> = _uiState.asStateFlow()
 
     /**
-     * Initialize with sample downloads
-     * In production, this would fetch from repository
+     * Initialize - observe downloads from repository
      */
     init {
-        loadSampleDownloads()
+        observeDownloads()
+    }
+
+    /**
+     * Observe downloads from repository (real-time updates)
+     */
+    private fun observeDownloads() {
+        viewModelScope.launch {
+            downloadRepository.getAllDownloads().collect { downloads ->
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        allDownloads = downloads,
+                        displayedDownloads = getFilteredAndSortedDownloads(
+                            allDownloads = downloads,
+                            filterType = currentState.selectedFilter,
+                            sortOption = currentState.selectedSortOption
+                        ),
+                        isLoading = false
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Start a new download
+     * Called when user confirms download in AddDownloadDialog
+     *
+     * @param config Download configuration from dialog
+     */
+    fun startDownload(config: DownloadConfig) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isDownloadInProgress = true, downloadError = null) }
+
+            startDownloadUseCase(
+                url = config.url,
+                fileName = config.fileName,
+                destinationPath = config.filePath
+            ).collect { result ->
+                result.onSuccess { downloadItem ->
+                    // Download started successfully
+                    _uiState.update {
+                        it.copy(
+                            isDownloadInProgress = false,
+                            downloadSuccess = true,
+                            successMessage = "Download started: ${downloadItem.fileName}"
+                        )
+                    }
+                    // Clear success message after 3 seconds
+                    kotlinx.coroutines.delay(3000)
+                    _uiState.update { it.copy(downloadSuccess = false, successMessage = null) }
+                }.onFailure { error ->
+                    // Download failed to start
+                    _uiState.update {
+                        it.copy(
+                            isDownloadInProgress = false,
+                            downloadError = error.message ?: "Failed to start download"
+                        )
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -132,96 +199,6 @@ class DownloadScreenViewModel @Inject constructor(
 
         return sortedDownloads
     }
-
-    /**
-     * Load sample downloads for testing
-     * In production, this would be replaced with repository call
-     */
-    private fun loadSampleDownloads() {
-        viewModelScope.launch {
-            val samples = getSampleDownloads()
-            _uiState.update { currentState ->
-                currentState.copy(
-                    allDownloads = samples,
-                    displayedDownloads = getFilteredAndSortedDownloads(
-                        allDownloads = samples,
-                        filterType = currentState.selectedFilter,
-                        sortOption = currentState.selectedSortOption
-                    ),
-                    isLoading = false
-                )
-            }
-        }
-    }
-
-    /**
-     * Get sample downloads for UI testing
-     * TODO: Replace with actual repository implementation
-     */
-    private fun getSampleDownloads(): List<DownloadItem> {
-        return listOf(
-            DownloadItem(
-                id = "1",
-                fileName = "video_tutorial_android_jetpack_compose.mp4",
-                downloadedSize = 25 * 1024 * 1024, // 25 MB
-                totalSize = 100 * 1024 * 1024,     // 100 MB
-                status = com.piumal.filedownloadmanager.domain.model.DownloadStatus.DOWNLOADING,
-                url = "https://example.com/video.mp4",
-                filePath = "/storage/emulated/0/Download/FileDownloadManager/",
-                createdAt = System.currentTimeMillis() - 3600000 // 1 hour ago
-            ),
-            DownloadItem(
-                id = "2",
-                fileName = "document_presentation.pdf",
-                downloadedSize = 50 * 1024 * 1024, // 50 MB
-                totalSize = 50 * 1024 * 1024,      // 50 MB
-                status = com.piumal.filedownloadmanager.domain.model.DownloadStatus.COMPLETED,
-                url = "https://example.com/document.pdf",
-                filePath = "/storage/emulated/0/Download/FileDownloadManager/",
-                createdAt = System.currentTimeMillis() - 7200000 // 2 hours ago
-            ),
-            DownloadItem(
-                id = "3",
-                fileName = "large_archive_backup.zip",
-                downloadedSize = 150 * 1024 * 1024, // 150 MB
-                totalSize = 500 * 1024 * 1024,      // 500 MB
-                status = com.piumal.filedownloadmanager.domain.model.DownloadStatus.PAUSED,
-                url = "https://example.com/archive.zip",
-                filePath = "/storage/emulated/0/Download/FileDownloadManager/",
-                createdAt = System.currentTimeMillis() - 1800000 // 30 minutes ago
-            ),
-            DownloadItem(
-                id = "4",
-                fileName = "image_collection.jpg",
-                downloadedSize = 2 * 1024 * 1024, // 2 MB
-                totalSize = 10 * 1024 * 1024,     // 10 MB
-                status = com.piumal.filedownloadmanager.domain.model.DownloadStatus.FAILED,
-                url = "https://example.com/image.jpg",
-                filePath = "/storage/emulated/0/Download/FileDownloadManager/",
-                createdAt = System.currentTimeMillis() - 10800000 // 3 hours ago
-            ),
-            DownloadItem(
-                id = "5",
-                fileName = "software_installer.exe",
-                downloadedSize = 80 * 1024 * 1024,  // 80 MB
-                totalSize = 200 * 1024 * 1024,      // 200 MB
-                status = com.piumal.filedownloadmanager.domain.model.DownloadStatus.DOWNLOADING,
-                url = "https://example.com/software.exe",
-                filePath = "/storage/emulated/0/Download/FileDownloadManager/",
-                createdAt = System.currentTimeMillis() - 900000 // 15 minutes ago
-            ),
-            DownloadItem(
-                id = "6",
-                fileName = "music_album.mp3",
-                downloadedSize = 120 * 1024 * 1024, // 120 MB
-                totalSize = 120 * 1024 * 1024,      // 120 MB
-                status = com.piumal.filedownloadmanager.domain.model.DownloadStatus.COMPLETED,
-                url = "https://example.com/music.mp3",
-                filePath = "/storage/emulated/0/Download/FileDownloadManager/",
-                createdAt = System.currentTimeMillis() - 14400000 // 4 hours ago
-            )
-        )
-    }
 }
 
 /**
@@ -235,6 +212,10 @@ data class DownloadScreenUiState(
     val selectedSortOption: SortOption = SortOption.DATE_DESC,
     val showSortSheet: Boolean = false,
     val showAddDownloadDialog: Boolean = false,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val isDownloadInProgress: Boolean = false,
+    val downloadSuccess: Boolean = false,
+    val successMessage: String? = null,
+    val downloadError: String? = null
 )
 

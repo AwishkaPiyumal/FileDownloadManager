@@ -1,26 +1,16 @@
 package com.piumal.filedownloadmanager.domain.usecase
 
-/**
- * Use case for extracting filename from URL
- * Single Responsibility Principle - handles only filename extraction logic
- */
-class ExtractFileNameUseCase {
+import com.piumal.filedownloadmanager.domain.util.ContentValidator
+import javax.inject.Inject
 
-    /**
-     * Extracts filename from URL
-     * @param url The download URL
-     * @return Extracted filename or empty string if extraction fails
-     */
+/**
+ * Use Case to extract filename from URL
+ * Follows Clean Architecture - encapsulates business logic
+ */
+class ExtractFileNameUseCase @Inject constructor() {
     operator fun invoke(url: String): String {
-        return try {
-            // Remove query parameters
-            val cleanUrl = url.substringBefore("?")
-            // Split by "/" and get last segment
-            val segments = cleanUrl.split("/")
-            segments.lastOrNull()?.takeIf { it.isNotEmpty() } ?: ""
-        } catch (e: Exception) {
-            ""
-        }
+        return ContentValidator.extractFileName(url)
+            ?: "download_${System.currentTimeMillis()}"
     }
 }
 

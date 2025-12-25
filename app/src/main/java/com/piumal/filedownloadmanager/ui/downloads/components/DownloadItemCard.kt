@@ -9,17 +9,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.ui.res.painterResource
 import com.piumal.filedownloadmanager.R
 import com.piumal.filedownloadmanager.domain.model.DownloadItem
 import com.piumal.filedownloadmanager.domain.model.DownloadStatus
 import com.piumal.filedownloadmanager.ui.theme.FileDownloadManagerTheme
+import java.util.Locale
 import kotlin.math.log10
 import kotlin.math.pow
 
@@ -69,50 +63,53 @@ fun DownloadItemCard(
                 modifier = Modifier.weight(1f)
             )
 
-            // More options button
-            IconButton(
-                onClick = { showMoreMenu = true },
-                modifier = Modifier.size(24.dp)
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.more_vert_24px),
-                    contentDescription = "More options",
-                    tint = colorScheme.onSurface
-                )
-            }
-            DownloadItemMoreOption(
-                expanded = showMoreMenu,
-                onDismiss = { showMoreMenu = false },
-                onMenuItemClick = { action ->
-                    when(action){
-                        is DownloadItemMoreMenuAction.Open -> {
-                            // Handle Open action
-                        }
-                        is DownloadItemMoreMenuAction.ShowInFolder -> {
-                            // Handle Show in Folder action
-                        }
-                        is DownloadItemMoreMenuAction.ShareFile -> {
-                            // Handle Share File action
-                        }
-                        is DownloadItemMoreMenuAction.ShowInfo -> {
-                            // Handle Show Info action
-                        }
-                        is DownloadItemMoreMenuAction.RenameFile -> {
-                            // Handle Show Info action
-                        }
-                        is DownloadItemMoreMenuAction.Moveto -> {
-                            // Handle Show Info action
-                        }
-                        is DownloadItemMoreMenuAction.Deletefile -> {
-                            // Handle Show Info action
-                        }
-                        is DownloadItemMoreMenuAction.Removefromlist -> {
-                            // Handle Show Info action
+            // More options button with menu positioned relative to it
+            Box {
+                IconButton(
+                    onClick = { showMoreMenu = true },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.more_vert_24px),
+                        contentDescription = "More options",
+                        tint = colorScheme.onSurface
+                    )
+                }
+
+                // Menu positioned relative to the IconButton
+                DownloadItemMoreOption(
+                    expanded = showMoreMenu,
+                    onDismiss = { showMoreMenu = false },
+                    onMenuItemClick = { action ->
+                        when(action){
+                            is DownloadItemMoreMenuAction.Open -> {
+                                // Handle Open action
+                            }
+                            is DownloadItemMoreMenuAction.ShowInFolder -> {
+                                // Handle Show in Folder action
+                            }
+                            is DownloadItemMoreMenuAction.ShareFile -> {
+                                // Handle Share File action
+                            }
+                            is DownloadItemMoreMenuAction.ShowInfo -> {
+                                // Handle Show Info action
+                            }
+                            is DownloadItemMoreMenuAction.RenameFile -> {
+                                // Handle Rename File action
+                            }
+                            is DownloadItemMoreMenuAction.Moveto -> {
+                                // Handle Move to action
+                            }
+                            is DownloadItemMoreMenuAction.Deletefile -> {
+                                // Handle Delete file action
+                            }
+                            is DownloadItemMoreMenuAction.Removefromlist -> {
+                                // Handle Remove from list action
+                            }
                         }
                     }
-                }
-            )
-
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -201,7 +198,7 @@ private fun formatBytes(bytes: Long): String {
 
     val size = bytes / 1024.0.pow(digitGroups.toDouble())
 
-    return String.format("%.2f %s", size, units[digitGroups])
+    return String.format(Locale.US, "%.2f %s", size, units[digitGroups])
 }
 
 /**

@@ -142,10 +142,36 @@ fun DownloadScreen(
             onDismiss = { viewModel.hideAddDownloadDialog() },
             onDownload = { config ->
                 viewModel.hideAddDownloadDialog()
-                // TODO: Implement download logic with the provided config
-                // config contains: url, filePath, fileName, scheduleTime
+                // Start the download with Google Policy validation
+                viewModel.startDownload(config)
             }
         )
+    }
+
+    // Show success snackbar
+    if (uiState.downloadSuccess) {
+        val message = uiState.successMessage
+        if (message != null) {
+            Snackbar(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text(message)
+            }
+        }
+    }
+
+    // Show error snackbar
+    val errorMessage = uiState.downloadError
+    if (errorMessage != null) {
+        Snackbar(
+            modifier = Modifier.padding(16.dp),
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        ) {
+            Text(
+                text = errorMessage,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+        }
     }
 }
 

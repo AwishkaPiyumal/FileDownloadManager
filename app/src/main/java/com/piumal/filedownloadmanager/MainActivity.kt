@@ -24,6 +24,5 @@ class MainActivity : ComponentActivity() {
                 MainScreen(navController = navController, drawerState = drawerState)
             }
         }
-
     }
 }
