@@ -12,7 +12,8 @@ data class DownloadItem(
     val status: DownloadStatus,
     val url: String,
     val filePath: String,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val scheduleTime: Long? = null  // Timestamp when download should start (null = immediate)
 ) {
     /**
      * Calculate download progress percentage

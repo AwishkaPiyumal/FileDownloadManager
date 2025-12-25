@@ -45,6 +45,9 @@ fun AddDownloadDialog(
     // Local state for validation errors
     var validationError by remember { mutableStateOf<String?>(null) }
 
+    // Local state for schedule picker dialog
+    var showSchedulePicker by remember { mutableStateOf(false) }
+
     // Initialize on first composition
     LaunchedEffect(Unit) {
         viewModel.initialize()
@@ -119,7 +122,17 @@ fun AddDownloadDialog(
                         unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                         cursorColor = MaterialTheme.colorScheme.primary
                     ),
-
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            // TODO: Open folder picker to select save location
+                        }) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.folder_24px),
+                                contentDescription = "Select Folder",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    },
                     singleLine = true
                 )
 
@@ -141,8 +154,7 @@ fun AddDownloadDialog(
                     ),
                     trailingIcon = {
                         IconButton(onClick = {
-                            viewModel.onSchedulePickerToggle(true)
-                            // TODO: Show date-time picker
+                            showSchedulePicker = true
                         }) {
                             Icon(
                                 painter = painterResource(id = R.drawable.calendar_clock_24px),
@@ -160,11 +172,23 @@ fun AddDownloadDialog(
                 // Show schedule info if set
                 if (uiState.scheduleTime != null) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Scheduled for later",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "📅 ${formatDateTime(uiState.scheduleTime!!)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(
+                            onClick = { viewModel.onScheduleTimeChanged(null) }
+                        ) {
+                            Text("Clear", color = MaterialTheme.colorScheme.error)
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
@@ -224,6 +248,20 @@ fun AddDownloadDialog(
                 }
             }
         }
+    }
+
+    // Schedule Picker Dialog
+    if (showSchedulePicker) {
+        SchedulePickerDialog(
+            initialDateTime = uiState.scheduleTime,
+            onDismiss = {
+                showSchedulePicker = false
+            },
+            onConfirm = { selectedTime ->
+                viewModel.onScheduleTimeChanged(selectedTime)
+                showSchedulePicker = false
+            }
+        )
     }
 }
 

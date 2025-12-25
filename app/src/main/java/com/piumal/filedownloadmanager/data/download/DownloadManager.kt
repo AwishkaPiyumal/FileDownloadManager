@@ -2,6 +2,7 @@ package com.piumal.filedownloadmanager.data.download
 
 import android.content.Context
 import android.os.Environment
+import android.util.Log
 import com.piumal.filedownloadmanager.domain.model.DownloadItem
 import com.piumal.filedownloadmanager.domain.model.DownloadStatus
 import com.piumal.filedownloadmanager.domain.util.ContentValidator
@@ -74,7 +75,16 @@ class DownloadManager @Inject constructor(
             // Create download directory
             val downloadDir = getDownloadDirectory()
             if (!downloadDir.exists()) {
-                downloadDir.mkdirs()
+                val created = downloadDir.mkdirs()
+                if (!created) {
+                    emit(DownloadProgress(
+                        downloadedBytes = 0,
+                        totalBytes = 0,
+                        status = DownloadStatus.FAILED,
+                        error = "Failed to create download directory"
+                    ))
+                    return@flow
+                }
             }
 
             // Create file
@@ -173,6 +183,7 @@ class DownloadManager @Inject constructor(
             ))
 
         } catch (e: IOException) {
+            Log.e("DownloadManager", "IOException during download", e)
             emit(DownloadProgress(
                 downloadedBytes = 0,
                 totalBytes = 0,
@@ -180,6 +191,7 @@ class DownloadManager @Inject constructor(
                 error = "Network error: ${e.message}"
             ))
         } catch (e: Exception) {
+            Log.e("DownloadManager", "Exception during download", e)
             emit(DownloadProgress(
                 downloadedBytes = 0,
                 totalBytes = 0,
@@ -191,13 +203,21 @@ class DownloadManager @Inject constructor(
 
     /**
      * Get download directory
-     * Uses public Downloads folder as per Android best practices
+     * Uses app-specific external storage for Android 10+ (doesn't require permissions)
+     * Uses public Downloads folder for older Android versions
      */
     private fun getDownloadDirectory(): File {
-        val downloadsDir = Environment.getExternalStoragePublicDirectory(
-            Environment.DIRECTORY_DOWNLOADS
-        )
-        return File(downloadsDir, "FileDownloadManager")
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            // Android 10+ (API 29+): Use app-specific external storage (no permission needed)
+            val appDownloadsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+            File(appDownloadsDir, "FileDownloadManager")
+        } else {
+            // Android 9 and below: Use public Downloads folder (requires permission)
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_DOWNLOADS
+            )
+            File(downloadsDir, "FileDownloadManager")
+        }
     }
 
     /**

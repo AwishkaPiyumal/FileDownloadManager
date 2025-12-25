@@ -24,7 +24,8 @@ data class DownloadEntity(
     val url: String,
     val filePath: String,
     val createdAt: Long,
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    val scheduleTime: Long? = null  // Timestamp when download should start (null = immediate)
 ) {
     /**
      * Convert Entity to Domain Model
@@ -38,7 +39,8 @@ data class DownloadEntity(
             status = DownloadStatus.valueOf(status),
             url = url,
             filePath = filePath,
-            createdAt = createdAt
+            createdAt = createdAt,
+            scheduleTime = scheduleTime
         )
     }
 
@@ -55,7 +57,8 @@ data class DownloadEntity(
                 status = downloadItem.status.name,
                 url = downloadItem.url,
                 filePath = downloadItem.filePath,
-                createdAt = downloadItem.createdAt
+                createdAt = downloadItem.createdAt,
+                scheduleTime = downloadItem.scheduleTime
             )
         }
     }

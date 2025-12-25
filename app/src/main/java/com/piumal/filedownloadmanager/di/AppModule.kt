@@ -7,6 +7,7 @@ import com.piumal.filedownloadmanager.data.local.DownloadDatabase
 import com.piumal.filedownloadmanager.data.local.dao.DownloadDao
 import com.piumal.filedownloadmanager.data.repository.DownloadRepositoryImpl
 import com.piumal.filedownloadmanager.domain.repository.DownloadRepository
+import com.piumal.filedownloadmanager.domain.usecase.ScheduledDownloadManager
 import com.piumal.filedownloadmanager.domain.usecase.StartDownloadUseCase
 import dagger.Module
 import dagger.Provides
@@ -88,9 +89,10 @@ object AppModule {
     @Provides
     @Singleton
     fun provideStartDownloadUseCase(
-        repository: DownloadRepository
+        repository: DownloadRepository,
+        scheduledDownloadManager: ScheduledDownloadManager
     ): StartDownloadUseCase {
-        return StartDownloadUseCase(repository)
+        return StartDownloadUseCase(repository, scheduledDownloadManager)
     }
 
     /**

@@ -50,6 +50,13 @@ interface DownloadRepository {
     suspend fun startDownload(download: DownloadItem)
 
     /**
+     * Schedule download to start at specific time
+     * @param download The download item to schedule
+     * @param scheduleTime Timestamp when download should start
+     */
+    suspend fun scheduleDownload(download: DownloadItem, scheduleTime: Long)
+
+    /**
      * Pause download
      */
     suspend fun pauseDownload(id: String)

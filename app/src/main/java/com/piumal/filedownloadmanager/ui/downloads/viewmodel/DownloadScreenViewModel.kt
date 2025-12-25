@@ -72,7 +72,7 @@ class DownloadScreenViewModel @Inject constructor(
      * Start a new download
      * Called when user confirms download in AddDownloadDialog
      *
-     * @param config Download configuration from dialog
+     * @param config Download configuration from dialog (includes scheduleTime)
      */
     fun startDownload(config: DownloadConfig) {
         viewModelScope.launch {
@@ -81,15 +81,22 @@ class DownloadScreenViewModel @Inject constructor(
             startDownloadUseCase(
                 url = config.url,
                 fileName = config.fileName,
-                destinationPath = config.filePath
+                destinationPath = config.filePath,
+                scheduleTime = config.scheduleTime
             ).collect { result ->
                 result.onSuccess { downloadItem ->
                     // Download started successfully
+                    val message = if (config.scheduleTime != null) {
+                        "Download scheduled: ${downloadItem.fileName}"
+                    } else {
+                        "Download started: ${downloadItem.fileName}"
+                    }
+
                     _uiState.update {
                         it.copy(
                             isDownloadInProgress = false,
                             downloadSuccess = true,
-                            successMessage = "Download started: ${downloadItem.fileName}"
+                            successMessage = message
                         )
                     }
                     // Clear success message after 3 seconds

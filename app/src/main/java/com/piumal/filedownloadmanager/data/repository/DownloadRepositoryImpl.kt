@@ -6,6 +6,7 @@ import com.piumal.filedownloadmanager.data.local.entity.DownloadEntity
 import com.piumal.filedownloadmanager.domain.model.DownloadItem
 import com.piumal.filedownloadmanager.domain.model.DownloadStatus
 import com.piumal.filedownloadmanager.domain.repository.DownloadRepository
+import com.piumal.filedownloadmanager.domain.usecase.ScheduledDownloadManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -76,35 +77,45 @@ class DownloadRepositoryImpl @Inject constructor(
 
         // Start download in background
         repositoryScope.launch {
-            downloadManager.downloadFile(download).collect { progress ->
-                // Update progress in database
-                downloadDao.updateProgress(
-                    id = download.id,
-                    downloadedSize = progress.downloadedBytes,
-                    totalSize = progress.totalBytes,
-                    updatedAt = System.currentTimeMillis()
-                )
+            try {
+                downloadManager.downloadFile(download).collect { progress ->
+                    // Update progress in database
+                    downloadDao.updateProgress(
+                        id = download.id,
+                        downloadedSize = progress.downloadedBytes,
+                        totalSize = progress.totalBytes,
+                        updatedAt = System.currentTimeMillis()
+                    )
 
-                // Update status
-                when (progress.status) {
-                    DownloadStatus.COMPLETED -> {
-                        downloadDao.updateStatus(
-                            id = download.id,
-                            status = DownloadStatus.COMPLETED.name,
-                            updatedAt = System.currentTimeMillis()
-                        )
-                    }
-                    DownloadStatus.FAILED -> {
-                        downloadDao.updateStatus(
-                            id = download.id,
-                            status = DownloadStatus.FAILED.name,
-                            updatedAt = System.currentTimeMillis()
-                        )
-                    }
-                    else -> {
-                        // Continue downloading
+                    // Update status
+                    when (progress.status) {
+                        DownloadStatus.COMPLETED -> {
+                            downloadDao.updateStatus(
+                                id = download.id,
+                                status = DownloadStatus.COMPLETED.name,
+                                updatedAt = System.currentTimeMillis()
+                            )
+                        }
+                        DownloadStatus.FAILED -> {
+                            downloadDao.updateStatus(
+                                id = download.id,
+                                status = DownloadStatus.FAILED.name,
+                                updatedAt = System.currentTimeMillis()
+                            )
+                        }
+                        else -> {
+                            // Continue downloading
+                        }
                     }
                 }
+            } catch (e: Exception) {
+                // If download fails with exception, mark as failed
+                e.printStackTrace()
+                downloadDao.updateStatus(
+                    id = download.id,
+                    status = DownloadStatus.FAILED.name,
+                    updatedAt = System.currentTimeMillis()
+                )
             }
         }
     }
@@ -121,6 +132,25 @@ class DownloadRepositoryImpl @Inject constructor(
     override suspend fun resumeDownload(id: String) {
         val download = getDownloadById(id)
         if (download != null) {
+            startDownload(download)
+        }
+    }
+
+    override suspend fun scheduleDownload(download: DownloadItem, scheduleTime: Long) {
+        // Calculate delay in milliseconds
+        val currentTime = System.currentTimeMillis()
+        val delay = scheduleTime - currentTime
+
+        if (delay > 0) {
+            // Update status to QUEUED (scheduled)
+            downloadDao.updateStatus(
+                id = download.id,
+                status = DownloadStatus.QUEUED.name,
+                updatedAt = System.currentTimeMillis()
+            )
+            // Note: Actual scheduling is handled in StartDownloadUseCase
+        } else {
+            // Time has passed, start immediately
             startDownload(download)
         }
     }
