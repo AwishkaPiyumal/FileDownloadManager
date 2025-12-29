@@ -77,10 +77,11 @@ object AppModule {
     @Provides
     @Singleton
     fun provideDownloadRepository(
+        @ApplicationContext context: Context,
         downloadDao: DownloadDao,
         downloadManager: DownloadManager
     ): DownloadRepository {
-        return DownloadRepositoryImpl(downloadDao, downloadManager)
+        return DownloadRepositoryImpl(context, downloadDao, downloadManager)
     }
 
     /**
@@ -89,10 +90,11 @@ object AppModule {
     @Provides
     @Singleton
     fun provideStartDownloadUseCase(
+        @ApplicationContext context: Context,
         repository: DownloadRepository,
         scheduledDownloadManager: ScheduledDownloadManager
     ): StartDownloadUseCase {
-        return StartDownloadUseCase(repository, scheduledDownloadManager)
+        return StartDownloadUseCase(context, repository, scheduledDownloadManager)
     }
 
     /**

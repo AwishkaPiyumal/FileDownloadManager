@@ -17,6 +17,7 @@ import com.piumal.filedownloadmanager.domain.usecase.DownloadFilterType
 import com.piumal.filedownloadmanager.ui.downloads.components.AddDownloadDialog
 import com.piumal.filedownloadmanager.ui.downloads.components.DownloadFAB
 import com.piumal.filedownloadmanager.ui.downloads.components.DownloadList
+import com.piumal.filedownloadmanager.ui.downloads.components.FileExistsDialog
 import com.piumal.filedownloadmanager.ui.downloads.components.SortBottomSheet
 import com.piumal.filedownloadmanager.ui.downloads.viewmodel.DownloadScreenViewModel
 
@@ -110,6 +111,15 @@ fun DownloadScreen(
                         downloads = uiState.displayedDownloads,
                         onMoreClick = { item ->
                             viewModel.onDownloadItemMoreClick(item)
+                        },
+                        onPauseClick = { downloadId ->
+                            viewModel.pauseDownload(downloadId)
+                        },
+                        onResumeClick = { downloadId ->
+                            viewModel.resumeDownload(downloadId)
+                        },
+                        onRetryClick = { downloadId ->
+                            viewModel.retryDownload(downloadId)
                         }
                     )
                 }
@@ -145,6 +155,15 @@ fun DownloadScreen(
                 // Start the download with Google Policy validation
                 viewModel.startDownload(config)
             }
+        )
+    }
+
+    // File Exists Dialog
+    if (uiState.showFileExistsDialog && uiState.existingFileName != null) {
+        FileExistsDialog(
+            fileName = uiState.existingFileName!!,
+            onDismiss = { viewModel.dismissFileExistsDialog() },
+            onContinue = { viewModel.continueDownloadWithRename() }
         )
     }
 

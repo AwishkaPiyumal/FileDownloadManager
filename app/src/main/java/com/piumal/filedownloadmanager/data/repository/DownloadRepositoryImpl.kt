@@ -1,12 +1,14 @@
 package com.piumal.filedownloadmanager.data.repository
 
+import android.content.Context
 import com.piumal.filedownloadmanager.data.download.DownloadManager
+import com.piumal.filedownloadmanager.data.download.DownloadService
 import com.piumal.filedownloadmanager.data.local.dao.DownloadDao
 import com.piumal.filedownloadmanager.data.local.entity.DownloadEntity
 import com.piumal.filedownloadmanager.domain.model.DownloadItem
 import com.piumal.filedownloadmanager.domain.model.DownloadStatus
 import com.piumal.filedownloadmanager.domain.repository.DownloadRepository
-import com.piumal.filedownloadmanager.domain.usecase.ScheduledDownloadManager
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -30,6 +32,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class DownloadRepositoryImpl @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val downloadDao: DownloadDao,
     private val downloadManager: DownloadManager
 ) : DownloadRepository {
@@ -75,58 +78,23 @@ class DownloadRepositoryImpl @Inject constructor(
             updatedAt = System.currentTimeMillis()
         )
 
-        // Start download in background
-        repositoryScope.launch {
-            try {
-                downloadManager.downloadFile(download).collect { progress ->
-                    // Update progress in database
-                    downloadDao.updateProgress(
-                        id = download.id,
-                        downloadedSize = progress.downloadedBytes,
-                        totalSize = progress.totalBytes,
-                        updatedAt = System.currentTimeMillis()
-                    )
-
-                    // Update status
-                    when (progress.status) {
-                        DownloadStatus.COMPLETED -> {
-                            downloadDao.updateStatus(
-                                id = download.id,
-                                status = DownloadStatus.COMPLETED.name,
-                                updatedAt = System.currentTimeMillis()
-                            )
-                        }
-                        DownloadStatus.FAILED -> {
-                            downloadDao.updateStatus(
-                                id = download.id,
-                                status = DownloadStatus.FAILED.name,
-                                updatedAt = System.currentTimeMillis()
-                            )
-                        }
-                        else -> {
-                            // Continue downloading
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                // If download fails with exception, mark as failed
-                e.printStackTrace()
-                downloadDao.updateStatus(
-                    id = download.id,
-                    status = DownloadStatus.FAILED.name,
-                    updatedAt = System.currentTimeMillis()
-                )
-            }
-        }
+        // Start download using DownloadService (foreground service with notifications)
+        DownloadService.startDownload(context, download.id)
     }
 
     override suspend fun pauseDownload(id: String) {
-        downloadDao.updateStatus(
-            id = id,
-            status = DownloadStatus.PAUSED.name,
-            updatedAt = System.currentTimeMillis()
-        )
-        // TODO: Implement actual pause logic
+        // Send pause action to DownloadService to stop the download job and update status
+        // The service handles database update and notification update for consistency
+        val intent = android.content.Intent(context, DownloadService::class.java).apply {
+            action = DownloadService.ACTION_PAUSE_DOWNLOAD
+            putExtra(DownloadService.EXTRA_DOWNLOAD_ID, id)
+        }
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
+        }
     }
 
     override suspend fun resumeDownload(id: String) {

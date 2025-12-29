@@ -53,10 +53,12 @@ data class DownloadItem(
  * Follows Google Play Store content policy - clear status indication
  */
 enum class DownloadStatus {
-    DOWNLOADING,
-    PAUSED,
-    COMPLETED,
-    FAILED,
-    QUEUED
+    PENDING,      // Download is waiting to start
+    DOWNLOADING,  // Currently downloading
+    PAUSED,       // User paused the download
+    COMPLETED,    // Download finished successfully
+    FAILED,       // Download failed
+    QUEUED,       // Scheduled for future download
+    CANCELLED     // Download was cancelled by user
 }
 
