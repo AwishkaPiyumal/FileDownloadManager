@@ -34,6 +34,12 @@ interface DownloadDao {
     suspend fun getDownloadById(id: String): DownloadEntity?
 
     /**
+     * Get downloads by multiple statuses (for resuming pending downloads)
+     */
+    @Query("SELECT * FROM downloads WHERE status IN (:statuses) ORDER BY createdAt DESC")
+    suspend fun getDownloadsByStatuses(statuses: List<String>): List<DownloadEntity>
+
+    /**
      * Insert new download
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)

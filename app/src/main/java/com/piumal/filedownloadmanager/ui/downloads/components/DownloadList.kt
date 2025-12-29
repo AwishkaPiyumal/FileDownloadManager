@@ -18,12 +18,18 @@ import com.piumal.filedownloadmanager.domain.model.DownloadItem
  *
  * @param downloads List of download items to display
  * @param onMoreClick Callback when more options is clicked on an item
+ * @param onPauseClick Callback when pause button is clicked
+ * @param onResumeClick Callback when resume button is clicked
+ * @param onRetryClick Callback when retry button is clicked
  * @param modifier Optional modifier for customization
  */
 @Composable
 fun DownloadList(
     downloads: List<DownloadItem>,
     onMoreClick: (DownloadItem) -> Unit,
+    onPauseClick: (String) -> Unit = {},
+    onResumeClick: (String) -> Unit = {},
+    onRetryClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (downloads.isEmpty()) {
@@ -41,7 +47,10 @@ fun DownloadList(
             ) { downloadItem ->
                 DownloadItemCard(
                     downloadItem = downloadItem,
-                    onMoreClick = onMoreClick
+                    onMoreClick = onMoreClick,
+                    onPauseClick = onPauseClick,
+                    onResumeClick = onResumeClick,
+                    onRetryClick = onRetryClick
                 )
             }
         }

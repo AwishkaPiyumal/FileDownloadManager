@@ -54,14 +54,20 @@ class DownloadManager @Inject constructor(
 
     /**
      * Start download with progress updates
+     * Supports resumable downloads using HTTP Range header
      *
      * @param downloadItem Download item to download
      * @return Flow of download progress
      */
     fun downloadFile(downloadItem: DownloadItem): Flow<DownloadProgress> = flow {
         try {
+            Log.d("DownloadManager", "=== Starting download ===")
+            Log.d("DownloadManager", "URL: ${downloadItem.url}")
+            Log.d("DownloadManager", "FileName: ${downloadItem.fileName}")
+
             // Validate URL again before download
             val validation = ContentValidator.validateDownloadUrl(downloadItem.url)
+            Log.d("DownloadManager", "URL validation: ${validation.isValid} - ${validation.message}")
             if (!validation.isValid) {
                 emit(DownloadProgress(
                     downloadedBytes = 0,
@@ -74,8 +80,10 @@ class DownloadManager @Inject constructor(
 
             // Create download directory
             val downloadDir = getDownloadDirectory()
+            Log.d("DownloadManager", "Download directory: ${downloadDir.absolutePath}")
             if (!downloadDir.exists()) {
                 val created = downloadDir.mkdirs()
+                Log.d("DownloadManager", "Directory created: $created")
                 if (!created) {
                     emit(DownloadProgress(
                         downloadedBytes = 0,
@@ -89,22 +97,34 @@ class DownloadManager @Inject constructor(
 
             // Create file
             val file = File(downloadDir, downloadItem.fileName)
+            Log.d("DownloadManager", "Target file: ${file.absolutePath}")
 
-            // Check if file already exists
-            if (file.exists()) {
-                file.delete()
-            }
+            // Check if file partially exists (for resume support)
+            val downloadedBytes = if (file.exists()) file.length() else 0L
+            Log.d("DownloadManager", "Already downloaded: $downloadedBytes bytes")
 
-            // Build request
-            val request = Request.Builder()
+            // Build request with Range header for resume support
+            val requestBuilder = Request.Builder()
                 .url(downloadItem.url)
                 .addHeader("User-Agent", "FileDownloadManager/1.0")
-                .build()
+
+            // Add Range header if resuming
+            if (downloadedBytes > 0) {
+                requestBuilder.addHeader("Range", "bytes=$downloadedBytes-")
+                Log.d("DownloadManager", "Resuming download from byte: $downloadedBytes")
+            }
+
+            val request = requestBuilder.build()
 
             // Execute request
+            Log.d("DownloadManager", "Executing HTTP request...")
             val response = okHttpClient.newCall(request).execute()
+            Log.d("DownloadManager", "Response code: ${response.code}")
+            Log.d("DownloadManager", "Response message: ${response.message}")
 
-            if (!response.isSuccessful) {
+            // Check response code (200 = new download, 206 = partial/resume)
+            if (!response.isSuccessful && response.code != 206) {
+                Log.e("DownloadManager", "HTTP error: ${response.code} - ${response.message}")
                 emit(DownloadProgress(
                     downloadedBytes = 0,
                     totalBytes = 0,
@@ -115,6 +135,7 @@ class DownloadManager @Inject constructor(
             }
 
             val body = response.body ?: run {
+                Log.e("DownloadManager", "Empty response body")
                 emit(DownloadProgress(
                     downloadedBytes = 0,
                     totalBytes = 0,
@@ -124,15 +145,28 @@ class DownloadManager @Inject constructor(
                 return@flow
             }
 
+            // Get content length
             val contentLength = body.contentLength()
+            val totalBytes = if (response.code == 206) {
+                // Partial download, add already downloaded bytes
+                downloadedBytes + contentLength
+            } else {
+                // New download
+                if (file.exists()) file.delete() // Delete existing file
+                contentLength
+            }
+
+            Log.d("DownloadManager", "Content length: $contentLength")
+            Log.d("DownloadManager", "Total bytes: $totalBytes")
 
             // Validate file size
-            if (contentLength > 0) {
-                val sizeValidation = ContentValidator.validateFileSize(contentLength)
+            if (totalBytes > 0) {
+                val sizeValidation = ContentValidator.validateFileSize(totalBytes)
+                Log.d("DownloadManager", "Size validation: ${sizeValidation.isValid} - ${sizeValidation.message}")
                 if (!sizeValidation.isValid) {
                     emit(DownloadProgress(
                         downloadedBytes = 0,
-                        totalBytes = contentLength,
+                        totalBytes = totalBytes,
                         status = DownloadStatus.FAILED,
                         error = sizeValidation.message
                     ))
@@ -140,31 +174,33 @@ class DownloadManager @Inject constructor(
                 }
             }
 
-            // Start downloading
+            // Open streams (append if resuming)
+            Log.d("DownloadManager", "Opening file streams...")
             val inputStream = body.byteStream()
-            val outputStream = FileOutputStream(file)
+            val outputStream = FileOutputStream(file, response.code == 206) // Append if 206
 
             val buffer = ByteArray(8192) // 8KB buffer
-            var downloadedBytes = 0L
+            var currentDownloadedBytes = downloadedBytes
             var bytesRead: Int
 
             // Emit initial progress
+            Log.d("DownloadManager", "Starting download loop...")
             emit(DownloadProgress(
-                downloadedBytes = 0,
-                totalBytes = contentLength,
+                downloadedBytes = currentDownloadedBytes,
+                totalBytes = totalBytes,
                 status = DownloadStatus.DOWNLOADING
             ))
 
             // Download loop
             while (inputStream.read(buffer).also { bytesRead = it } != -1) {
                 outputStream.write(buffer, 0, bytesRead)
-                downloadedBytes += bytesRead
+                currentDownloadedBytes += bytesRead
 
                 // Emit progress every 100KB
-                if (downloadedBytes % (100 * 1024) == 0L || bytesRead == -1) {
+                if (currentDownloadedBytes % (100 * 1024) < 8192 || bytesRead == -1) {
                     emit(DownloadProgress(
-                        downloadedBytes = downloadedBytes,
-                        totalBytes = contentLength,
+                        downloadedBytes = currentDownloadedBytes,
+                        totalBytes = totalBytes,
                         status = DownloadStatus.DOWNLOADING
                     ))
                 }
@@ -175,28 +211,38 @@ class DownloadManager @Inject constructor(
             outputStream.close()
             inputStream.close()
 
+            Log.d("DownloadManager", "Download completed successfully")
+
             // Emit completion
             emit(DownloadProgress(
-                downloadedBytes = downloadedBytes,
-                totalBytes = contentLength,
+                downloadedBytes = currentDownloadedBytes,
+                totalBytes = totalBytes,
                 status = DownloadStatus.COMPLETED
             ))
 
         } catch (e: IOException) {
             Log.e("DownloadManager", "IOException during download", e)
+            // Get current file size if it exists (preserve progress)
+            val file = File(getDownloadDirectory(), downloadItem.fileName)
+            val currentSize = if (file.exists()) file.length() else 0L
+
             emit(DownloadProgress(
-                downloadedBytes = 0,
-                totalBytes = 0,
+                downloadedBytes = currentSize,
+                totalBytes = downloadItem.totalSize,
                 status = DownloadStatus.FAILED,
-                error = "Network error: ${e.message}"
+                error = "Network error - Download paused. You can resume when network is restored."
             ))
         } catch (e: Exception) {
             Log.e("DownloadManager", "Exception during download", e)
+            // Get current file size if it exists (preserve progress)
+            val file = File(getDownloadDirectory(), downloadItem.fileName)
+            val currentSize = if (file.exists()) file.length() else 0L
+
             emit(DownloadProgress(
-                downloadedBytes = 0,
-                totalBytes = 0,
+                downloadedBytes = currentSize,
+                totalBytes = downloadItem.totalSize,
                 status = DownloadStatus.FAILED,
-                error = "Error: ${e.message}"
+                error = "Error: ${e.message} - You can retry the download."
             ))
         }
     }.flowOn(Dispatchers.IO)
