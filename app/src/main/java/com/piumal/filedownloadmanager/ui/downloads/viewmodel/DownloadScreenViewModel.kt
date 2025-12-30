@@ -294,6 +294,116 @@ class DownloadScreenViewModel @Inject constructor(
         // This will be implemented when we add item actions
     }
 
+    // =============================================
+    // SELECTION MODE FUNCTIONS
+    // =============================================
+
+    /**
+     * Enter selection mode
+     * Called when user clicks "Select" from More Options Menu
+     * or long presses a download item
+     */
+    fun enterSelectionMode() {
+        _uiState.update { it.copy(isSelectionMode = true) }
+        Log.d("DownloadScreenVM", "Entered selection mode")
+    }
+
+    /**
+     * Exit selection mode and clear all selections
+     * Called when user clicks close button in selection header
+     */
+    fun exitSelectionMode() {
+        _uiState.update {
+            it.copy(
+                isSelectionMode = false,
+                selectedDownloadIds = emptySet()
+            )
+        }
+        Log.d("DownloadScreenVM", "Exited selection mode")
+    }
+
+    /**
+     * Toggle selection of a single download item
+     * @param downloadId ID of the download to toggle
+     */
+    fun toggleSelection(downloadId: String) {
+        _uiState.update { currentState ->
+            val currentSelection = currentState.selectedDownloadIds
+            val newSelection = if (currentSelection.contains(downloadId)) {
+                currentSelection - downloadId
+            } else {
+                currentSelection + downloadId
+            }
+
+            // If no items are selected after toggle, exit selection mode
+            if (newSelection.isEmpty()) {
+                currentState.copy(
+                    isSelectionMode = false,
+                    selectedDownloadIds = emptySet()
+                )
+            } else {
+                currentState.copy(selectedDownloadIds = newSelection)
+            }
+        }
+        Log.d("DownloadScreenVM", "Toggled selection for: $downloadId")
+    }
+
+    /**
+     * Handle long press on download item
+     * Enters selection mode and selects the item
+     * @param downloadId ID of the long-pressed download
+     */
+    fun onItemLongPress(downloadId: String) {
+        _uiState.update { currentState ->
+            if (!currentState.isSelectionMode) {
+                // Enter selection mode and select this item
+                currentState.copy(
+                    isSelectionMode = true,
+                    selectedDownloadIds = setOf(downloadId)
+                )
+            } else {
+                // Already in selection mode, just toggle
+                val newSelection = if (currentState.selectedDownloadIds.contains(downloadId)) {
+                    currentState.selectedDownloadIds - downloadId
+                } else {
+                    currentState.selectedDownloadIds + downloadId
+                }
+
+                if (newSelection.isEmpty()) {
+                    currentState.copy(
+                        isSelectionMode = false,
+                        selectedDownloadIds = emptySet()
+                    )
+                } else {
+                    currentState.copy(selectedDownloadIds = newSelection)
+                }
+            }
+        }
+        Log.d("DownloadScreenVM", "Long pressed item: $downloadId")
+    }
+
+    /**
+     * Select all currently displayed downloads
+     */
+    fun selectAll() {
+        _uiState.update { currentState ->
+            val allIds = currentState.displayedDownloads.map { it.id }.toSet()
+            currentState.copy(
+                isSelectionMode = true,
+                selectedDownloadIds = allIds
+            )
+        }
+        Log.d("DownloadScreenVM", "Selected all downloads")
+    }
+
+    /**
+     * Deselect all downloads
+     */
+    fun deselectAll() {
+        _uiState.update { it.copy(selectedDownloadIds = emptySet()) }
+        Log.d("DownloadScreenVM", "Deselected all downloads")
+    }
+
     /**
      * Apply filter and sort to downloads list
      * This is the core logic that combines both operations
@@ -331,6 +441,19 @@ data class DownloadScreenUiState(
     val isDownloadInProgress: Boolean = false,
     val downloadSuccess: Boolean = false,
     val successMessage: String? = null,
-    val downloadError: String? = null
-)
+    val downloadError: String? = null,
+    // Selection mode states
+    val isSelectionMode: Boolean = false,
+    val selectedDownloadIds: Set<String> = emptySet()
+) {
+    /**
+     * Get count of selected items
+     */
+    val selectedCount: Int get() = selectedDownloadIds.size
+
+    /**
+     * Check if a download item is selected
+     */
+    fun isSelected(downloadId: String): Boolean = selectedDownloadIds.contains(downloadId)
+}
 

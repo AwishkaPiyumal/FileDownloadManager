@@ -1,10 +1,15 @@
 package com.piumal.filedownloadmanager.ui.downloads.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -26,8 +31,13 @@ import kotlin.math.pow
  * @param onPauseClick Callback when pause button is clicked
  * @param onResumeClick Callback when resume button is clicked
  * @param onRetryClick Callback when retry button is clicked
+ * @param isSelectionMode Whether selection mode is active
+ * @param isSelected Whether this item is currently selected
+ * @param onLongPress Callback when item is long pressed
+ * @param onItemClick Callback when item is clicked (used for selection toggle in selection mode)
  * @param modifier Optional modifier for customization
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DownloadItemCard(
     downloadItem: DownloadItem,
@@ -35,6 +45,10 @@ fun DownloadItemCard(
     onPauseClick: (String) -> Unit = {},
     onResumeClick: (String) -> Unit = {},
     onRetryClick: (String) -> Unit = {},
+    isSelectionMode: Boolean = false,
+    isSelected: Boolean = false,
+    onLongPress: (String) -> Unit = {},
+    onItemClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showMoreMenu by remember { mutableStateOf(false) }
@@ -48,9 +62,31 @@ fun DownloadItemCard(
         formatFileSize(downloadItem)
     }
 
+    // Background color based on selection state
+    val backgroundColor = if (isSelected) {
+        colorScheme.primaryContainer.copy(alpha = 0.3f)
+    } else {
+        colorScheme.surface
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(backgroundColor)
+            .combinedClickable(
+                onClick = {
+                    if (isSelectionMode) {
+                        // In selection mode, clicking toggles selection
+                        onItemClick(downloadItem.id)
+                    }
+                    // In normal mode, clicking does nothing (user uses more options)
+                },
+                onLongClick = {
+                    // Long press enters selection mode and selects this item
+                    onLongPress(downloadItem.id)
+                }
+            )
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         // Row 1: File name and More button

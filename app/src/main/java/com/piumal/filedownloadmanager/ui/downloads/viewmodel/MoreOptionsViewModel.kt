@@ -4,8 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.piumal.filedownloadmanager.ui.downloads.components.MoreMenuAction
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -27,6 +30,10 @@ class MoreOptionsViewModel @Inject constructor(
     // State for menu visibility
     private val _isMenuExpanded = MutableStateFlow(false)
     val isMenuExpanded: StateFlow<Boolean> = _isMenuExpanded.asStateFlow()
+
+    // Event flow for triggering selection mode in DownloadScreen
+    private val _selectionModeEvent = MutableSharedFlow<Boolean>()
+    val selectionModeEvent: SharedFlow<Boolean> = _selectionModeEvent.asSharedFlow()
 
     /**
      * Show the more options menu
@@ -69,11 +76,10 @@ class MoreOptionsViewModel @Inject constructor(
 
     /**
      * Enable selection mode for downloads
-     * Allows users to select multiple items for batch operations
+     * Emits event to trigger selection mode in DownloadScreen
      */
-    private fun handleSelect() {
-        // TODO: Implement selection mode
-        // This will enable multi-select checkboxes on download items
+    private suspend fun handleSelect() {
+        _selectionModeEvent.emit(true)
     }
 
     /**

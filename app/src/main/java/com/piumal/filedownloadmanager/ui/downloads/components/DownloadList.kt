@@ -21,6 +21,10 @@ import com.piumal.filedownloadmanager.domain.model.DownloadItem
  * @param onPauseClick Callback when pause button is clicked
  * @param onResumeClick Callback when resume button is clicked
  * @param onRetryClick Callback when retry button is clicked
+ * @param isSelectionMode Whether selection mode is active
+ * @param selectedIds Set of selected download IDs
+ * @param onLongPress Callback when item is long pressed
+ * @param onItemClick Callback when item is clicked (for selection toggle)
  * @param modifier Optional modifier for customization
  */
 @Composable
@@ -30,6 +34,10 @@ fun DownloadList(
     onPauseClick: (String) -> Unit = {},
     onResumeClick: (String) -> Unit = {},
     onRetryClick: (String) -> Unit = {},
+    isSelectionMode: Boolean = false,
+    selectedIds: Set<String> = emptySet(),
+    onLongPress: (String) -> Unit = {},
+    onItemClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (downloads.isEmpty()) {
@@ -50,7 +58,11 @@ fun DownloadList(
                     onMoreClick = onMoreClick,
                     onPauseClick = onPauseClick,
                     onResumeClick = onResumeClick,
-                    onRetryClick = onRetryClick
+                    onRetryClick = onRetryClick,
+                    isSelectionMode = isSelectionMode,
+                    isSelected = selectedIds.contains(downloadItem.id),
+                    onLongPress = onLongPress,
+                    onItemClick = onItemClick
                 )
             }
         }
