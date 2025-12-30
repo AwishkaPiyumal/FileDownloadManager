@@ -52,7 +52,9 @@ fun MainScreen(
     drawerState: DrawerState,
     modifier: Modifier = Modifier,
     moreOptionsViewModel: MoreOptionsViewModel = hiltViewModel(),
-    content: @Composable (NavHostController) -> Unit = { NavigationGraph(it) }
+    content: @Composable (NavHostController, MoreOptionsViewModel) -> Unit = { nav, viewModel ->
+        NavigationGraph(nav, viewModel)
+    }
 ) {
     val scope = rememberCoroutineScope()
     val currentBackStack by navController.currentBackStackEntryAsState()
@@ -156,7 +158,7 @@ fun MainScreen(
             }
         ) { paddingValues ->
             Surface(modifier = modifier.padding(paddingValues)) {
-                content(navController) // use provided content (placeholder in preview)
+                content(navController, moreOptionsViewModel) // pass shared ViewModel
             }
         }
     }
@@ -168,9 +170,9 @@ fun MainScreenPreview() {
     FileDownloadManagerTheme {
         val navController = rememberNavController()
         val drawerState = rememberDrawerState(DrawerValue.Closed)
-        MainScreen(navController = navController, drawerState = drawerState) { _ ->
+        MainScreen(navController = navController, drawerState = drawerState) { _, _ ->
             // lightweight preview content to avoid NavigationGraph runtime issues
-            androidx.compose.foundation.layout.Box(modifier = Modifier.padding(16.dp)) {
+            Box(modifier = Modifier.padding(16.dp)) {
                 Text("Preview: MainScreen")
             }
         }

@@ -18,19 +18,38 @@ import com.piumal.filedownloadmanager.ui.downloads.components.AddDownloadDialog
 import com.piumal.filedownloadmanager.ui.downloads.components.DownloadFAB
 import com.piumal.filedownloadmanager.ui.downloads.components.DownloadList
 import com.piumal.filedownloadmanager.ui.downloads.components.FileExistsDialog
+import com.piumal.filedownloadmanager.ui.downloads.components.SelectionHeader
 import com.piumal.filedownloadmanager.ui.downloads.components.SortBottomSheet
 import com.piumal.filedownloadmanager.ui.downloads.viewmodel.DownloadScreenViewModel
+import com.piumal.filedownloadmanager.ui.downloads.viewmodel.MoreOptionsViewModel
 
 
+/**
+ * DownloadScreen - Main screen for displaying download items
+ *
+ * @param viewModel ViewModel for managing download screen state
+ * @param moreOptionsViewModel Shared ViewModel for More Options Menu actions
+ *        (shared with MainScreen to enable "Select" menu item)
+ */
 @Composable
 fun DownloadScreen(
-    viewModel: DownloadScreenViewModel = hiltViewModel()
+    viewModel: DownloadScreenViewModel = hiltViewModel(),
+    moreOptionsViewModel: MoreOptionsViewModel = hiltViewModel()
 ) {
     // Collect UI state from ViewModel
     val uiState by viewModel.uiState.collectAsState()
 
     var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("All", "Active", "Completed")
+
+    // Observe selection mode event from MoreOptionsViewModel
+    LaunchedEffect(Unit) {
+        moreOptionsViewModel.selectionModeEvent.collect { shouldEnterSelection ->
+            if (shouldEnterSelection) {
+                viewModel.enterSelectionMode()
+            }
+        }
+    }
 
     // Update filter type when tab changes
     LaunchedEffect(selectedTabIndex) {
@@ -49,48 +68,58 @@ fun DownloadScreen(
                 .fillMaxSize()
                 .padding(top = 10.dp, start = 16.dp, end = 16.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surface),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TabRow(
-                    selectedTabIndex = selectedTabIndex,
-                    containerColor = MaterialTheme.colorScheme.surface,
+            // Show SelectionHeader when in selection mode, otherwise show tabs
+            if (uiState.isSelectionMode) {
+                // Selection Header - shows selected count and close button
+                SelectionHeader(
+                    selectedCount = uiState.selectedCount,
+                    onClose = { viewModel.exitSelectionMode() }
+                )
+            } else {
+                // Normal mode - show tabs and sort button
+                Row(
                     modifier = Modifier
-                        .weight(1f)
+                        .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surface),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTabIndex == index,
-                            onClick = { selectedTabIndex = index },
-                            text = {
-                                Text(
-                                    title,
-                                    color = if (selectedTabIndex == index)
-                                        MaterialTheme.colorScheme.secondary
-                                    else
-                                        MaterialTheme.colorScheme.onSurface
-                                )
-                            }
+                    TabRow(
+                        selectedTabIndex = selectedTabIndex,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                    ) {
+                        tabs.forEachIndexed { index, title ->
+                            Tab(
+                                selected = selectedTabIndex == index,
+                                onClick = { selectedTabIndex = index },
+                                text = {
+                                    Text(
+                                        title,
+                                        color = if (selectedTabIndex == index)
+                                            MaterialTheme.colorScheme.secondary
+                                        else
+                                            MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            )
+                        }
+                    }
+
+                    IconButton(
+                        onClick = { viewModel.showSortSheet() },
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(com.piumal.filedownloadmanager.R.drawable.sort_24px),
+                            contentDescription = "Sort",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
-                }
-
-                IconButton(
-                    onClick = { viewModel.showSortSheet() },
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Icon(
-                        painter = painterResource(com.piumal.filedownloadmanager.R.drawable.sort_24px),
-                        contentDescription = "Sort",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(24.dp)
-                    )
                 }
             }
 
@@ -120,6 +149,14 @@ fun DownloadScreen(
                         },
                         onRetryClick = { downloadId ->
                             viewModel.retryDownload(downloadId)
+                        },
+                        isSelectionMode = uiState.isSelectionMode,
+                        selectedIds = uiState.selectedDownloadIds,
+                        onLongPress = { downloadId ->
+                            viewModel.onItemLongPress(downloadId)
+                        },
+                        onItemClick = { downloadId ->
+                            viewModel.toggleSelection(downloadId)
                         }
                     )
                 }
