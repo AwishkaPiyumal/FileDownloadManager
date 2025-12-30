@@ -23,12 +23,18 @@ import kotlin.math.pow
  *
  * @param downloadItem Download data to display
  * @param onMoreClick Callback when more options button is clicked
+ * @param onPauseClick Callback when pause button is clicked
+ * @param onResumeClick Callback when resume button is clicked
+ * @param onRetryClick Callback when retry button is clicked
  * @param modifier Optional modifier for customization
  */
 @Composable
 fun DownloadItemCard(
     downloadItem: DownloadItem,
     onMoreClick: (DownloadItem) -> Unit,
+    onPauseClick: (String) -> Unit = {},
+    onResumeClick: (String) -> Unit = {},
+    onRetryClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showMoreMenu by remember { mutableStateOf(false) }
@@ -145,18 +151,73 @@ fun DownloadItemCard(
             Spacer(modifier = Modifier.height(4.dp))
         }
 
-        // Row 3: Status label and file size
+        // Row 3: Status label, action button, and file size
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Status label
-            Text(
-                text = getStatusText(downloadItem.status),
-                style = typography.bodySmall,
-                color = getStatusColor(downloadItem.status, colorScheme)
-            )
+            // Left side: Status label and action button
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Status label
+                Text(
+                    text = getStatusText(downloadItem.status),
+                    style = typography.bodySmall,
+                    color = getStatusColor(downloadItem.status, colorScheme)
+                )
+
+                // Action button based on status
+                when (downloadItem.status) {
+                    DownloadStatus.DOWNLOADING -> {
+                        // Show Pause button
+                        IconButton(
+                            onClick = { onPauseClick(downloadItem.id) },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.pause_circle_24px),
+                                contentDescription = "Pause download",
+                                tint = colorScheme.onSurface,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                    DownloadStatus.PAUSED -> {
+                        // Show Resume (Play) button
+                        IconButton(
+                            onClick = { onResumeClick(downloadItem.id) },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.play_circle_24px),
+                                contentDescription = "Resume download",
+                                tint = colorScheme.onSurface,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                    DownloadStatus.FAILED -> {
+                        // Show Retry (Refresh) button
+                        IconButton(
+                            onClick = { onRetryClick(downloadItem.id) },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.refresh_24px),
+                                contentDescription = "Retry download",
+                                tint = colorScheme.onSurface,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                    else -> {
+                        // No action button for COMPLETED, QUEUED, etc.
+                    }
+                }
+            }
 
             // File size information
             Text(
@@ -207,11 +268,13 @@ private fun formatBytes(bytes: Long): String {
  */
 private fun getStatusText(status: DownloadStatus): String {
     return when (status) {
+        DownloadStatus.PENDING -> "Pending"
         DownloadStatus.DOWNLOADING -> "Downloading"
         DownloadStatus.PAUSED -> "Paused"
         DownloadStatus.COMPLETED -> "Completed"
         DownloadStatus.FAILED -> "Failed"
         DownloadStatus.QUEUED -> "Queued"
+        DownloadStatus.CANCELLED -> "Cancelled"
     }
 }
 
@@ -222,11 +285,13 @@ private fun getStatusText(status: DownloadStatus): String {
 @Composable
 private fun getStatusColor(status: DownloadStatus, colorScheme: ColorScheme): androidx.compose.ui.graphics.Color {
     return when (status) {
+        DownloadStatus.PENDING -> colorScheme.primary
         DownloadStatus.DOWNLOADING -> colorScheme.secondary
         DownloadStatus.PAUSED -> colorScheme.tertiaryContainer
         DownloadStatus.COMPLETED -> colorScheme.tertiary
         DownloadStatus.FAILED -> colorScheme.error
         DownloadStatus.QUEUED -> colorScheme.onSurfaceVariant
+        DownloadStatus.CANCELLED -> colorScheme.outline
     }
 }
 

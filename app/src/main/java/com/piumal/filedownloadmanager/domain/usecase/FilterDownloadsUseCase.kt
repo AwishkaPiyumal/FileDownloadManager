@@ -35,6 +35,7 @@ class FilterDownloadsUseCase @Inject constructor() {
      */
     private fun filterActive(downloads: List<DownloadItem>): List<DownloadItem> {
         return downloads.filter {
+            it.status == DownloadStatus.PENDING ||
             it.status == DownloadStatus.DOWNLOADING ||
             it.status == DownloadStatus.QUEUED
         }

@@ -36,8 +36,8 @@ object ContentValidator {
         // Data
         "db", "sql", "sqlite", "mdb",
 
-        // Others
-        "iso", "log", "md", "yaml", "yml"
+        // Test files and Others
+        "bin", "dat", "test", "sample", "demo", "iso", "log", "md", "yaml", "yml"
     )
 
     /**

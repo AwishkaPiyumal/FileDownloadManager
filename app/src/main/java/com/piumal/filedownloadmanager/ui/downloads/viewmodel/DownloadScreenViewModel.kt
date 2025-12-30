@@ -1,5 +1,6 @@
 package com.piumal.filedownloadmanager.ui.downloads.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.piumal.filedownloadmanager.domain.model.DownloadConfig
@@ -73,45 +74,107 @@ class DownloadScreenViewModel @Inject constructor(
      * Called when user confirms download in AddDownloadDialog
      *
      * @param config Download configuration from dialog (includes scheduleTime)
+     * @param forceNewDownload If true, forces new download with renamed file
      */
-    fun startDownload(config: DownloadConfig) {
+    fun startDownload(config: DownloadConfig, forceNewDownload: Boolean = false) {
+        Log.d("DownloadScreenVM", "=== startDownload called ===")
+        Log.d("DownloadScreenVM", "URL: ${config.url}")
+        Log.d("DownloadScreenVM", "FileName: ${config.fileName}")
+        Log.d("DownloadScreenVM", "FilePath: ${config.filePath}")
+        Log.d("DownloadScreenVM", "ForceNewDownload: $forceNewDownload")
+
         viewModelScope.launch {
             _uiState.update { it.copy(isDownloadInProgress = true, downloadError = null) }
+            Log.d("DownloadScreenVM", "Starting download use case...")
 
             startDownloadUseCase(
                 url = config.url,
                 fileName = config.fileName,
                 destinationPath = config.filePath,
-                scheduleTime = config.scheduleTime
+                scheduleTime = config.scheduleTime,
+                forceNewDownload = forceNewDownload
             ).collect { result ->
+                Log.d("DownloadScreenVM", "Received result from use case")
                 result.onSuccess { downloadItem ->
                     // Download started successfully
+                    Log.d("DownloadScreenVM", "Download started successfully: ID=${downloadItem.id}, Status=${downloadItem.status}")
                     val message = if (config.scheduleTime != null) {
                         "Download scheduled: ${downloadItem.fileName}"
                     } else {
                         "Download started: ${downloadItem.fileName}"
                     }
 
+                    Log.d("DownloadScreenVM", "Success message: $message")
+
                     _uiState.update {
                         it.copy(
                             isDownloadInProgress = false,
                             downloadSuccess = true,
-                            successMessage = message
+                            successMessage = message,
+                            showFileExistsDialog = false,
+                            pendingDownloadConfig = null,
+                            existingFileName = null
                         )
                     }
+                    Log.d("DownloadScreenVM", "UI state updated with success")
                     // Clear success message after 3 seconds
                     kotlinx.coroutines.delay(3000)
                     _uiState.update { it.copy(downloadSuccess = false, successMessage = null) }
                 }.onFailure { error ->
                     // Download failed to start
-                    _uiState.update {
-                        it.copy(
-                            isDownloadInProgress = false,
-                            downloadError = error.message ?: "Failed to start download"
-                        )
+                    Log.e("DownloadScreenVM", "Download failed to start", error)
+
+                    // Check if it's a FileAlreadyExistsException
+                    if (error is com.piumal.filedownloadmanager.domain.usecase.FileAlreadyExistsException) {
+                        // Show file exists dialog
+                        Log.d("DownloadScreenVM", "File already exists, showing confirmation dialog")
+                        _uiState.update {
+                            it.copy(
+                                isDownloadInProgress = false,
+                                showFileExistsDialog = true,
+                                existingFileName = error.fileName,
+                                pendingDownloadConfig = config
+                            )
+                        }
+                    } else {
+                        // Other error - show error message
+                        val errorMessage = error.message ?: "Failed to start download"
+                        _uiState.update {
+                            it.copy(
+                                isDownloadInProgress = false,
+                                downloadError = errorMessage
+                            )
+                        }
+                        Log.d("DownloadScreenVM", "UI state updated with error: ${error.message}")
                     }
                 }
             }
+            Log.d("DownloadScreenVM", "=== startDownload completed ===")
+        }
+    }
+
+    /**
+     * Handle user clicking Continue on file exists dialog
+     * Downloads the file again with a renamed filename
+     */
+    fun continueDownloadWithRename() {
+        val config = _uiState.value.pendingDownloadConfig
+        if (config != null) {
+            Log.d("DownloadScreenVM", "Continuing download with rename")
+            startDownload(config, forceNewDownload = true)
+        }
+    }
+
+    /**
+     * Handle user clicking Cancel on file exists dialog
+     */
+    fun dismissFileExistsDialog() {
+        _uiState.update {
+            it.copy(
+                showFileExistsDialog = false,
+                existingFileName = null,
+                pendingDownloadConfig = null
+            )
         }
     }
 
@@ -182,7 +245,49 @@ class DownloadScreenViewModel @Inject constructor(
     }
 
     /**
-     * Handle more options click for a download item
+     * Pause a download
+     */
+    fun pauseDownload(downloadId: String) {
+        viewModelScope.launch {
+            try {
+                downloadRepository.pauseDownload(downloadId)
+                Log.d("DownloadScreenVM", "Download paused: $downloadId")
+            } catch (e: Exception) {
+                Log.e("DownloadScreenVM", "Error pausing download", e)
+            }
+        }
+    }
+
+    /**
+     * Resume a paused download
+     */
+    fun resumeDownload(downloadId: String) {
+        viewModelScope.launch {
+            try {
+                downloadRepository.resumeDownload(downloadId)
+                Log.d("DownloadScreenVM", "Download resumed: $downloadId")
+            } catch (e: Exception) {
+                Log.e("DownloadScreenVM", "Error resuming download", e)
+            }
+        }
+    }
+
+    /**
+     * Retry a failed download
+     */
+    fun retryDownload(downloadId: String) {
+        viewModelScope.launch {
+            try {
+                downloadRepository.retryDownload(downloadId)
+                Log.d("DownloadScreenVM", "Download retried: $downloadId")
+            } catch (e: Exception) {
+                Log.e("DownloadScreenVM", "Error retrying download", e)
+            }
+        }
+    }
+
+    /**
+     * Handle download item more options click
      */
     fun onDownloadItemMoreClick(item: DownloadItem) {
         // TODO: Show options menu for this item
@@ -219,6 +324,9 @@ data class DownloadScreenUiState(
     val selectedSortOption: SortOption = SortOption.DATE_DESC,
     val showSortSheet: Boolean = false,
     val showAddDownloadDialog: Boolean = false,
+    val showFileExistsDialog: Boolean = false,
+    val existingFileName: String? = null,
+    val pendingDownloadConfig: DownloadConfig? = null,
     val isLoading: Boolean = true,
     val isDownloadInProgress: Boolean = false,
     val downloadSuccess: Boolean = false,
