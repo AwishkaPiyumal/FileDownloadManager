@@ -1,7 +1,9 @@
 package com.piumal.filedownloadmanager.ui.downloads.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.piumal.filedownloadmanager.domain.usecase.PauseAllDownloadsUseCase
 import com.piumal.filedownloadmanager.ui.downloads.components.MoreMenuAction
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -23,9 +25,12 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class MoreOptionsViewModel @Inject constructor(
-    // Future: Inject UseCases here for actual download operations
-    // e.g., pauseAllDownloadsUseCase, resumeAllDownloadsUseCase, etc.
+    private val pauseAllDownloadsUseCase: PauseAllDownloadsUseCase
 ) : ViewModel() {
+
+    companion object {
+        private const val TAG = "MoreOptionsViewModel"
+    }
 
     // State for menu visibility
     private val _isMenuExpanded = MutableStateFlow(false)
@@ -34,6 +39,10 @@ class MoreOptionsViewModel @Inject constructor(
     // Event flow for triggering selection mode in DownloadScreen
     private val _selectionModeEvent = MutableSharedFlow<Boolean>()
     val selectionModeEvent: SharedFlow<Boolean> = _selectionModeEvent.asSharedFlow()
+
+    // Event flow for showing toast messages to user
+    private val _toastMessage = MutableSharedFlow<String>()
+    val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
 
     /**
      * Show the more options menu
@@ -84,10 +93,27 @@ class MoreOptionsViewModel @Inject constructor(
 
     /**
      * Pause all active downloads
+     * Uses PauseAllDownloadsUseCase to pause all DOWNLOADING and QUEUED items
      */
     private fun handlePauseAll() {
-        // TODO: Implement pause all downloads
-        // Call pauseAllDownloadsUseCase when implemented
+        viewModelScope.launch {
+            Log.d(TAG, "Pause All action triggered")
+            pauseAllDownloadsUseCase().fold(
+                onSuccess = { pausedCount ->
+                    Log.d(TAG, "Successfully paused $pausedCount downloads")
+                    val message = if (pausedCount > 0) {
+                        "Paused $pausedCount download${if (pausedCount > 1) "s" else ""}"
+                    } else {
+                        "No active downloads to pause"
+                    }
+                    _toastMessage.emit(message)
+                },
+                onFailure = { error ->
+                    Log.e(TAG, "Failed to pause downloads: ${error.message}")
+                    _toastMessage.emit("Failed to pause downloads")
+                }
+            )
+        }
     }
 
     /**
