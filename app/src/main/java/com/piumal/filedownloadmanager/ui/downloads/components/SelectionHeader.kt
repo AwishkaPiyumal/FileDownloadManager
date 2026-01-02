@@ -34,6 +34,9 @@ fun SelectionHeader(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Determine delete icon opacity based on selection state
+    val deleteIconAlpha = if (selectedCount > 0) 1f else 0.4f
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -43,11 +46,11 @@ fun SelectionHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Selection count text
+        // Selection count text - using onBackground color
         Text(
             text = "$selectedCount Selected",
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onPrimaryContainer
+            color = MaterialTheme.colorScheme.onBackground
         )
 
         // Action buttons row
@@ -56,6 +59,7 @@ fun SelectionHeader(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Delete button - deletes selected items
+            // Lower opacity when no items selected, full opacity when items are selected
             IconButton(
                 onClick = onDelete,
                 modifier = Modifier.size(32.dp),
@@ -64,14 +68,11 @@ fun SelectionHeader(
                 Icon(
                     painter = painterResource(id = R.drawable.delete_24px),
                     contentDescription = "Delete selected items",
-                    tint = if (selectedCount > 0)
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    else
-                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
+                    tint = MaterialTheme.colorScheme.onBackground.copy(alpha = deleteIconAlpha)
                 )
             }
 
-            // Close button to exit selection mode
+            // Close button to exit selection mode - using onBackground color
             IconButton(
                 onClick = onClose,
                 modifier = Modifier.size(32.dp)
@@ -79,7 +80,7 @@ fun SelectionHeader(
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Exit selection mode",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    tint = MaterialTheme.colorScheme.onBackground
                 )
             }
         }
@@ -92,6 +93,18 @@ fun SelectionHeaderPreview() {
     FileDownloadManagerTheme {
         SelectionHeader(
             selectedCount = 3,
+            onClose = {},
+            onDelete = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SelectionHeaderNoSelectionPreview() {
+    FileDownloadManagerTheme {
+        SelectionHeader(
+            selectedCount = 0,
             onClose = {},
             onDelete = {}
         )
