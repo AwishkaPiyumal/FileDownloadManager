@@ -105,39 +105,6 @@ fun MoreOptionsMenu(
             modifier = Modifier.height(32.dp)
         )
 
-        // Menu Item: Remove All
-        DropdownMenuItem(
-            text = {
-                Text(
-                    text = "Remove All",
-                    color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.labelMedium
-                )
-            },
-            onClick = {
-                onMenuItemClick(MoreMenuAction.RemoveAll)
-                onDismiss()
-            },
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-            modifier = Modifier.height(32.dp)
-        )
-
-        // Menu Item: Delete All
-        DropdownMenuItem(
-            text = {
-                Text(
-                    text = "Delete All",
-                    color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.labelMedium
-                )
-            },
-            onClick = {
-                onMenuItemClick(MoreMenuAction.DeleteAll)
-                onDismiss()
-            },
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-            modifier = Modifier.height(32.dp)
-        )
 
         // Menu Item: How to download?
         DropdownMenuItem(
@@ -167,8 +134,6 @@ sealed class MoreMenuAction {
     object PauseAll : MoreMenuAction()
     object ResumeAll : MoreMenuAction()
     object RetryAll : MoreMenuAction()
-    object RemoveAll : MoreMenuAction()
-    object DeleteAll : MoreMenuAction()
     object HowToDownload : MoreMenuAction()
 }
 

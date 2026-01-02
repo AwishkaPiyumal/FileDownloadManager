@@ -3,9 +3,7 @@ package com.piumal.filedownloadmanager.ui.downloads.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.piumal.filedownloadmanager.domain.usecase.DeleteAllDownloadsUseCase
 import com.piumal.filedownloadmanager.domain.usecase.PauseAllDownloadsUseCase
-import com.piumal.filedownloadmanager.domain.usecase.RemoveAllDownloadsUseCase
 import com.piumal.filedownloadmanager.domain.usecase.ResumeAllDownloadsUseCase
 import com.piumal.filedownloadmanager.domain.usecase.RetryAllDownloadsUseCase
 import com.piumal.filedownloadmanager.ui.downloads.components.MoreMenuAction
@@ -31,9 +29,7 @@ import javax.inject.Inject
 class MoreOptionsViewModel @Inject constructor(
     private val pauseAllDownloadsUseCase: PauseAllDownloadsUseCase,
     private val resumeAllDownloadsUseCase: ResumeAllDownloadsUseCase,
-    private val retryAllDownloadsUseCase: RetryAllDownloadsUseCase,
-    private val removeAllDownloadsUseCase: RemoveAllDownloadsUseCase,
-    private val deleteAllDownloadsUseCase: DeleteAllDownloadsUseCase
+    private val retryAllDownloadsUseCase: RetryAllDownloadsUseCase
 ) : ViewModel() {
 
     companion object {
@@ -52,9 +48,6 @@ class MoreOptionsViewModel @Inject constructor(
     private val _toastMessage = MutableSharedFlow<String>()
     val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
 
-    // State for showing delete all confirmation dialog
-    private val _showDeleteConfirmDialog = MutableStateFlow(false)
-    val showDeleteConfirmDialog: StateFlow<Boolean> = _showDeleteConfirmDialog.asStateFlow()
 
     /**
      * Show the more options menu
@@ -88,8 +81,6 @@ class MoreOptionsViewModel @Inject constructor(
                 is MoreMenuAction.PauseAll -> handlePauseAll()
                 is MoreMenuAction.ResumeAll -> handleResumeAll()
                 is MoreMenuAction.RetryAll -> handleRetryAll()
-                is MoreMenuAction.RemoveAll -> handleRemoveAll()
-                is MoreMenuAction.DeleteAll -> handleDeleteAll()
                 is MoreMenuAction.HowToDownload -> handleHowToDownload()
             }
         }
@@ -178,74 +169,6 @@ class MoreOptionsViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Remove all downloads from the list (keeps files on storage)
-     * Uses RemoveAllDownloadsUseCase to remove all items from database
-     */
-    private fun handleRemoveAll() {
-        viewModelScope.launch {
-            Log.d(TAG, "Remove All action triggered")
-            removeAllDownloadsUseCase().fold(
-                onSuccess = { removedCount ->
-                    Log.d(TAG, "Successfully removed $removedCount downloads")
-                    val message = if (removedCount > 0) {
-                        "Removed $removedCount download${if (removedCount > 1) "s" else ""}"
-                    } else {
-                        "No downloads to remove"
-                    }
-                    _toastMessage.emit(message)
-                },
-                onFailure = { error ->
-                    Log.e(TAG, "Failed to remove downloads: ${error.message}")
-                    _toastMessage.emit("Failed to remove downloads")
-                }
-            )
-        }
-    }
-
-    /**
-     * Show delete all confirmation dialog
-     * Does not delete immediately - waits for user confirmation
-     */
-    private fun handleDeleteAll() {
-        Log.d(TAG, "Delete All action triggered - showing confirmation dialog")
-        _showDeleteConfirmDialog.value = true
-    }
-
-    /**
-     * Dismiss the delete all confirmation dialog
-     */
-    fun dismissDeleteConfirmDialog() {
-        _showDeleteConfirmDialog.value = false
-    }
-
-    /**
-     * Confirm and execute delete all downloads
-     * Called when user confirms deletion in the dialog
-     * Uses DeleteAllDownloadsUseCase to delete all items and their files
-     */
-    fun confirmDeleteAll() {
-        viewModelScope.launch {
-            Log.d(TAG, "Delete All confirmed by user")
-            _showDeleteConfirmDialog.value = false
-
-            deleteAllDownloadsUseCase().fold(
-                onSuccess = { deletedCount ->
-                    Log.d(TAG, "Successfully deleted $deletedCount downloads")
-                    val message = if (deletedCount > 0) {
-                        "Deleted $deletedCount download${if (deletedCount > 1) "s" else ""}"
-                    } else {
-                        "No downloads to delete"
-                    }
-                    _toastMessage.emit(message)
-                },
-                onFailure = { error ->
-                    Log.e(TAG, "Failed to delete downloads: ${error.message}")
-                    _toastMessage.emit("Failed to delete downloads")
-                }
-            )
-        }
-    }
 
     /**
      * Show help/tutorial on how to download
