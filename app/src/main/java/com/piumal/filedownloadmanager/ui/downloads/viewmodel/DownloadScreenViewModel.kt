@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.piumal.filedownloadmanager.domain.model.DownloadConfig
 import com.piumal.filedownloadmanager.domain.model.DownloadItem
 import com.piumal.filedownloadmanager.domain.repository.DownloadRepository
+import com.piumal.filedownloadmanager.domain.usecase.DeleteSelectedDownloadsUseCase
 import com.piumal.filedownloadmanager.domain.usecase.DownloadFilterType
 import com.piumal.filedownloadmanager.domain.usecase.FilterDownloadsUseCase
 import com.piumal.filedownloadmanager.domain.usecase.SortDownloadsUseCase
@@ -32,6 +33,7 @@ class DownloadScreenViewModel @Inject constructor(
     private val sortDownloadsUseCase: SortDownloadsUseCase,
     private val filterDownloadsUseCase: FilterDownloadsUseCase,
     private val startDownloadUseCase: StartDownloadUseCase,
+    private val deleteSelectedDownloadsUseCase: DeleteSelectedDownloadsUseCase,
     private val downloadRepository: DownloadRepository
 ) : ViewModel() {
 
@@ -404,6 +406,70 @@ class DownloadScreenViewModel @Inject constructor(
         Log.d("DownloadScreenVM", "Deselected all downloads")
     }
 
+    // =============================================
+    // DELETE SELECTED FUNCTIONS
+    // =============================================
+
+    /**
+     * Show delete selected confirmation dialog
+     * Called when user clicks delete button in selection header
+     */
+    fun showDeleteSelectedDialog() {
+        if (_uiState.value.selectedDownloadIds.isNotEmpty()) {
+            _uiState.update { it.copy(showDeleteSelectedDialog = true) }
+            Log.d("DownloadScreenVM", "Showing delete selected dialog")
+        }
+    }
+
+    /**
+     * Dismiss delete selected confirmation dialog
+     */
+    fun dismissDeleteSelectedDialog() {
+        _uiState.update { it.copy(showDeleteSelectedDialog = false) }
+        Log.d("DownloadScreenVM", "Dismissed delete selected dialog")
+    }
+
+    /**
+     * Confirm and execute deletion of selected downloads
+     * Deletes files from storage and removes from database
+     */
+    fun confirmDeleteSelected() {
+        viewModelScope.launch {
+            val selectedIds = _uiState.value.selectedDownloadIds
+            Log.d("DownloadScreenVM", "Confirming delete of ${selectedIds.size} items")
+
+            // Hide dialog first
+            _uiState.update { it.copy(showDeleteSelectedDialog = false) }
+
+            // Execute deletion
+            deleteSelectedDownloadsUseCase(selectedIds).fold(
+                onSuccess = { deletedCount ->
+                    Log.d("DownloadScreenVM", "Successfully deleted $deletedCount downloads")
+                    // Exit selection mode after successful deletion
+                    _uiState.update {
+                        it.copy(
+                            isSelectionMode = false,
+                            selectedDownloadIds = emptySet(),
+                            downloadSuccess = true,
+                            successMessage = "Deleted $deletedCount ${if (deletedCount == 1) "file" else "files"}"
+                        )
+                    }
+                    // Clear success message after delay
+                    kotlinx.coroutines.delay(3000)
+                    _uiState.update { it.copy(downloadSuccess = false, successMessage = null) }
+                },
+                onFailure = { error ->
+                    Log.e("DownloadScreenVM", "Failed to delete downloads: ${error.message}")
+                    _uiState.update {
+                        it.copy(
+                            downloadError = "Failed to delete files: ${error.message}"
+                        )
+                    }
+                }
+            )
+        }
+    }
+
     /**
      * Apply filter and sort to downloads list
      * This is the core logic that combines both operations
@@ -435,6 +501,7 @@ data class DownloadScreenUiState(
     val showSortSheet: Boolean = false,
     val showAddDownloadDialog: Boolean = false,
     val showFileExistsDialog: Boolean = false,
+    val showDeleteSelectedDialog: Boolean = false,
     val existingFileName: String? = null,
     val pendingDownloadConfig: DownloadConfig? = null,
     val isLoading: Boolean = true,
