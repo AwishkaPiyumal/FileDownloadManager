@@ -29,6 +29,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.piumal.filedownloadmanager.ui.components.AppDrawer
+import com.piumal.filedownloadmanager.ui.downloads.components.DeleteAllConfirmDialog
 import com.piumal.filedownloadmanager.ui.downloads.components.MoreOptionsMenu
 import com.piumal.filedownloadmanager.ui.downloads.viewmodel.MoreOptionsViewModel
 import com.piumal.filedownloadmanager.ui.navigation.NavigationGraph
@@ -67,11 +68,22 @@ fun MainScreen(
     // Collect menu state from ViewModel
     val isMenuExpanded by moreOptionsViewModel.isMenuExpanded.collectAsState()
 
+    // Collect delete confirmation dialog state
+    val showDeleteConfirmDialog by moreOptionsViewModel.showDeleteConfirmDialog.collectAsState()
+
     // Observe toast messages from MoreOptionsViewModel
     LaunchedEffect(Unit) {
         moreOptionsViewModel.toastMessage.collect { message ->
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    // Show delete all confirmation dialog
+    if (showDeleteConfirmDialog) {
+        DeleteAllConfirmDialog(
+            onConfirm = { moreOptionsViewModel.confirmDeleteAll() },
+            onDismiss = { moreOptionsViewModel.dismissDeleteConfirmDialog() }
+        )
     }
 
     ModalNavigationDrawer(
