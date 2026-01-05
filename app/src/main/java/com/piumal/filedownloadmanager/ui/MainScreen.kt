@@ -22,17 +22,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
 import com.piumal.filedownloadmanager.ui.components.AppDrawer
 import com.piumal.filedownloadmanager.ui.downloads.components.MoreOptionsMenu
 import com.piumal.filedownloadmanager.ui.downloads.viewmodel.MoreOptionsViewModel
 import com.piumal.filedownloadmanager.ui.navigation.NavigationGraph
-import com.piumal.filedownloadmanager.ui.theme.FileDownloadManagerTheme
 import kotlinx.coroutines.launch
 
 /**
@@ -170,22 +167,7 @@ fun MainScreen(
             }
         ) { paddingValues ->
             Surface(modifier = modifier.padding(paddingValues)) {
-                content(navController, moreOptionsViewModel) // pass shared ViewModel
-            }
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun MainScreenPreview() {
-    FileDownloadManagerTheme {
-        val navController = rememberNavController()
-        val drawerState = rememberDrawerState(DrawerValue.Closed)
-        MainScreen(navController = navController, drawerState = drawerState) { _, _ ->
-            // lightweight preview content to avoid NavigationGraph runtime issues
-            Box(modifier = Modifier.padding(16.dp)) {
-                Text("Preview: MainScreen")
+                content(navController, moreOptionsViewModel)
             }
         }
     }

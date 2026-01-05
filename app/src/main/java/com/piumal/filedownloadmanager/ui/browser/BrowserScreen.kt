@@ -16,9 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.piumal.filedownloadmanager.ui.theme.FileDownloadManagerTheme
 
 /**
  * BrowserScreen - In-app web browser for downloading files
@@ -73,21 +71,5 @@ fun BrowserScreen() {
                 textAlign = TextAlign.Center
             )
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun BrowserPreview() {
-    FileDownloadManagerTheme {
-        BrowserScreen()
-    }
-}
-
-@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun BrowserDarkPreview() {
-    FileDownloadManagerTheme {
-        BrowserScreen()
     }
 }

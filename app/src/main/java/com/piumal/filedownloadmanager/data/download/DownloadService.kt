@@ -3,7 +3,6 @@ package com.piumal.filedownloadmanager.data.download
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -11,8 +10,6 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.piumal.filedownloadmanager.MainActivity
-import com.piumal.filedownloadmanager.R
 import com.piumal.filedownloadmanager.data.local.dao.DownloadDao
 import com.piumal.filedownloadmanager.domain.model.DownloadStatus
 import dagger.hilt.android.AndroidEntryPoint

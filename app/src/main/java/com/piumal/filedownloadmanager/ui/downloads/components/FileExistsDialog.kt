@@ -7,11 +7,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.piumal.filedownloadmanager.ui.theme.FileDownloadManagerTheme
 
 /**
  * FileExistsDialog Component
@@ -131,33 +129,4 @@ fun FileExistsDialog(
     }
 }
 
-/**
- * Preview for Light Theme
- */
-@Preview(showBackground = true)
-@Composable
-fun FileExistsDialogPreview() {
-    FileDownloadManagerTheme {
-        FileExistsDialog(
-            fileName = "sample_document.pdf",
-            onDismiss = {},
-            onContinue = {}
-        )
-    }
-}
-
-/**
- * Preview for Dark Theme
- */
-@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun FileExistsDialogDarkPreview() {
-    FileDownloadManagerTheme {
-        FileExistsDialog(
-            fileName = "sample_document.pdf",
-            onDismiss = {},
-            onContinue = {}
-        )
-    }
-}
 

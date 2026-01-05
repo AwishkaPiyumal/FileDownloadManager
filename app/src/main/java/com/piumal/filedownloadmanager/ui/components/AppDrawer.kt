@@ -13,10 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.piumal.filedownloadmanager.ui.navigation.bottomNavItems
-import com.piumal.filedownloadmanager.ui.theme.FileDownloadManagerTheme
 import com.piumal.filedownloadmanager.ui.theme.White
 
 @Composable
@@ -145,28 +143,3 @@ val context = LocalContext.current
     }
 }
 
-@Preview(name = "Light Mode", showBackground = true)
-@Composable
-fun AppDrawerLightPreview() {
-    FileDownloadManagerTheme(darkTheme = false) {
-        AppDrawer(
-            currentRoute = "downloads",
-            onNavigate = {},
-            onCloseDrawer = {},
-            onExit = {}
-        )
-    }
-}
-
-@Preview(name = "Dark Mode", showBackground = true)
-@Composable
-fun AppDrawerDarkPreview() {
-    FileDownloadManagerTheme(darkTheme = true) {
-        AppDrawer(
-            currentRoute = "downloads",
-            onNavigate = {},
-            onCloseDrawer = {},
-            onExit = {}
-        )
-    }
-}

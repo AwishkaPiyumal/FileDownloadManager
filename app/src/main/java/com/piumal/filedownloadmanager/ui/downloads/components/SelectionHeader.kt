@@ -12,10 +12,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.piumal.filedownloadmanager.R
-import com.piumal.filedownloadmanager.ui.theme.FileDownloadManagerTheme
 
 /**
  * Selection Header Component
@@ -127,73 +125,4 @@ fun SelectionHeader(
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun SelectionHeaderPreview() {
-    FileDownloadManagerTheme {
-        SelectionHeader(
-            selectedCount = 3,
-            totalCount = 10,
-            onClose = {},
-            onDelete = {},
-            onSelectAll = {}
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun SelectionHeaderNoSelectionPreview() {
-    FileDownloadManagerTheme {
-        SelectionHeader(
-            selectedCount = 0,
-            totalCount = 5,
-            onClose = {},
-            onDelete = {},
-            onSelectAll = {}
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun SelectionHeaderAllSelectedPreview() {
-    FileDownloadManagerTheme {
-        SelectionHeader(
-            selectedCount = 5,
-            totalCount = 5,
-            onClose = {},
-            onDelete = {},
-            onSelectAll = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun SelectionHeaderDarkPreview() {
-    FileDownloadManagerTheme {
-        SelectionHeader(
-            selectedCount = 5,
-            totalCount = 10,
-            onClose = {},
-            onDelete = {},
-            onSelectAll = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun SelectionHeaderAllSelectedDarkPreview() {
-    FileDownloadManagerTheme {
-        SelectionHeader(
-            selectedCount = 5,
-            totalCount = 5,
-            onClose = {},
-            onDelete = {},
-            onSelectAll = {}
-        )
-    }
-}
 

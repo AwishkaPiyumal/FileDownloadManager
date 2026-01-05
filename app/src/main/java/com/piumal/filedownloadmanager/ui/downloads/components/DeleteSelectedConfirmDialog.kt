@@ -8,11 +8,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.piumal.filedownloadmanager.R
-import com.piumal.filedownloadmanager.ui.theme.FileDownloadManagerTheme
 
 /**
  * DeleteSelectedConfirmDialog Component
@@ -113,27 +111,4 @@ fun DeleteSelectedConfirmDialog(
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun DeleteSelectedConfirmDialogPreview() {
-    FileDownloadManagerTheme {
-        DeleteSelectedConfirmDialog(
-            selectedCount = 3,
-            onConfirm = {},
-            onDismiss = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun DeleteSelectedConfirmDialogDarkPreview() {
-    FileDownloadManagerTheme {
-        DeleteSelectedConfirmDialog(
-            selectedCount = 1,
-            onConfirm = {},
-            onDismiss = {}
-        )
-    }
-}
 
