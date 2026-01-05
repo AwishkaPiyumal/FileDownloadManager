@@ -96,11 +96,11 @@ fun MainScreen(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(bottomStart = 10.dp, bottomEnd = 10.dp)),
+                        .clip(RoundedCornerShape(bottomStart = 0.dp, bottomEnd = 0.dp)),
                     color = MaterialTheme.colorScheme.primary
                 ) {
                     CenterAlignedTopAppBar(
-                        modifier = Modifier.height(105.dp),
+                        modifier = Modifier.height(120.dp),
 
                         title = {
                             Text(

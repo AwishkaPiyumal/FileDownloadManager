@@ -5,6 +5,7 @@ import com.piumal.filedownloadmanager.domain.model.DownloadStatus
 import com.piumal.filedownloadmanager.domain.repository.DownloadRepository
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * RetryAllDownloadsUseCase
@@ -19,6 +20,7 @@ import javax.inject.Inject
  *
  * @param downloadRepository Repository for download operations
  */
+@Singleton
 class RetryAllDownloadsUseCase @Inject constructor(
     private val downloadRepository: DownloadRepository
 ) {

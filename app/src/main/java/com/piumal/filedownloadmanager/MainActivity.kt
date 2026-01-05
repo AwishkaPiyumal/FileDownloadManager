@@ -63,19 +63,32 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
 
-        // Request notification permission for Android 13+
-        requestNotificationPermission()
+        try {
+            enableEdgeToEdge()
 
-        // Request storage permission
-        requestStoragePermission()
+            // Request notification permission for Android 13+
+            requestNotificationPermission()
 
-        setContent {
-            FileDownloadManagerTheme {
-                val navController = rememberNavController()
-                val drawerState = rememberDrawerState(DrawerValue.Closed)
-                MainScreen(navController = navController, drawerState = drawerState)
+            // Request storage permission
+            requestStoragePermission()
+
+            setContent {
+                FileDownloadManagerTheme {
+                    val navController = rememberNavController()
+                    val drawerState = rememberDrawerState(DrawerValue.Closed)
+                    MainScreen(navController = navController, drawerState = drawerState)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error during onCreate", e)
+            // Try to show minimal UI on error
+            setContent {
+                FileDownloadManagerTheme {
+                    Surface {
+                        Text("Error loading app. Please restart.")
+                    }
+                }
             }
         }
     }

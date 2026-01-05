@@ -47,7 +47,13 @@ class DownloadScreenViewModel @Inject constructor(
      * Initialize - observe downloads from repository
      */
     init {
-        observeDownloads()
+        Log.d("DownloadScreenVM", "ViewModel init started")
+        try {
+            observeDownloads()
+            Log.d("DownloadScreenVM", "ViewModel init completed successfully")
+        } catch (e: Exception) {
+            Log.e("DownloadScreenVM", "Error during ViewModel init", e)
+        }
     }
 
     /**
@@ -55,18 +61,23 @@ class DownloadScreenViewModel @Inject constructor(
      */
     private fun observeDownloads() {
         viewModelScope.launch {
-            downloadRepository.getAllDownloads().collect { downloads ->
-                _uiState.update { currentState ->
-                    currentState.copy(
-                        allDownloads = downloads,
-                        displayedDownloads = getFilteredAndSortedDownloads(
+            try {
+                downloadRepository.getAllDownloads().collect { downloads ->
+                    _uiState.update { currentState ->
+                        currentState.copy(
                             allDownloads = downloads,
-                            filterType = currentState.selectedFilter,
-                            sortOption = currentState.selectedSortOption
-                        ),
-                        isLoading = false
-                    )
+                            displayedDownloads = getFilteredAndSortedDownloads(
+                                allDownloads = downloads,
+                                filterType = currentState.selectedFilter,
+                                sortOption = currentState.selectedSortOption
+                            ),
+                            isLoading = false
+                        )
+                    }
                 }
+            } catch (e: Exception) {
+                Log.e("DownloadScreenVM", "Error observing downloads", e)
+                _uiState.update { it.copy(isLoading = false, downloadError = "Failed to load downloads") }
             }
         }
     }

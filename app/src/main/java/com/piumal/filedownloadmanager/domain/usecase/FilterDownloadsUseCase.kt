@@ -3,12 +3,14 @@ package com.piumal.filedownloadmanager.domain.usecase
 import com.piumal.filedownloadmanager.domain.model.DownloadItem
 import com.piumal.filedownloadmanager.domain.model.DownloadStatus
 import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Use case for filtering download items by status
  * Implements Clean Architecture principles
  * Follows Single Responsibility Principle
  */
+@Singleton
 class FilterDownloadsUseCase @Inject constructor() {
 
     /**

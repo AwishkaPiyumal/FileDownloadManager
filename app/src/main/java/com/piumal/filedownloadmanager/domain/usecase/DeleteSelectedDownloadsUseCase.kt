@@ -8,6 +8,7 @@ import com.piumal.filedownloadmanager.domain.repository.DownloadRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * DeleteSelectedDownloadsUseCase
@@ -27,6 +28,7 @@ import javax.inject.Inject
  * @param downloadRepository Repository for download operations
  * @param context Application context for file operations
  */
+@Singleton
 class DeleteSelectedDownloadsUseCase @Inject constructor(
     private val downloadRepository: DownloadRepository,
     @ApplicationContext private val context: Context

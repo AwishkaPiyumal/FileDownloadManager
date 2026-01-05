@@ -5,12 +5,14 @@ import com.piumal.filedownloadmanager.ui.downloads.components.SortCategory
 import com.piumal.filedownloadmanager.ui.downloads.components.SortOption
 import com.piumal.filedownloadmanager.ui.downloads.components.SortOrder
 import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Use case for sorting download items
  * Implements Clean Architecture principles
  * Follows Single Responsibility Principle
  */
+@Singleton
 class SortDownloadsUseCase @Inject constructor() {
 
     /**
