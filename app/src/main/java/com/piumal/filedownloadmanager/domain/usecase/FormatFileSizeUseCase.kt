@@ -1,6 +1,7 @@
 package com.piumal.filedownloadmanager.domain.usecase
 
 import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.math.log10
 import kotlin.math.pow
 
@@ -8,6 +9,7 @@ import kotlin.math.pow
  * Use case for formatting file size in human-readable format
  * Follows single responsibility principle
  */
+@Singleton
 class FormatFileSizeUseCase @Inject constructor() {
 
     /**

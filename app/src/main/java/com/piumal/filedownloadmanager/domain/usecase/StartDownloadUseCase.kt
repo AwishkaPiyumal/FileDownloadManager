@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.first
 import java.io.File
 import java.util.UUID
 import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Use Case for starting a new download
@@ -38,6 +39,7 @@ import javax.inject.Inject
  * @param repository Download repository interface
  * @param scheduledDownloadManager Scheduled download manager
  */
+@Singleton
 class StartDownloadUseCase @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repository: DownloadRepository,

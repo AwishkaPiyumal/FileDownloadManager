@@ -7,8 +7,6 @@ import com.piumal.filedownloadmanager.data.local.DownloadDatabase
 import com.piumal.filedownloadmanager.data.local.dao.DownloadDao
 import com.piumal.filedownloadmanager.data.repository.DownloadRepositoryImpl
 import com.piumal.filedownloadmanager.domain.repository.DownloadRepository
-import com.piumal.filedownloadmanager.domain.usecase.ScheduledDownloadManager
-import com.piumal.filedownloadmanager.domain.usecase.StartDownloadUseCase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -22,8 +20,9 @@ import javax.inject.Singleton
  * Provides dependencies for:
  * - Database
  * - Repository
- * - Use Cases
  * - Download Manager
+ *
+ * Note: Use Cases with @Inject constructor are automatically provided by Hilt.
  *
  * Follows Clean Architecture with proper dependency direction
  *
@@ -84,37 +83,8 @@ object AppModule {
         return DownloadRepositoryImpl(context, downloadDao, downloadManager)
     }
 
-    /**
-     * Provide Start Download Use Case
-     */
-    @Provides
-    @Singleton
-    fun provideStartDownloadUseCase(
-        @ApplicationContext context: Context,
-        repository: DownloadRepository,
-        scheduledDownloadManager: ScheduledDownloadManager
-    ): StartDownloadUseCase {
-        return StartDownloadUseCase(context, repository, scheduledDownloadManager)
-    }
-
-    /**
-     * Provide Get Clipboard URL Use Case
-     */
-    @Provides
-    @Singleton
-    fun provideGetClipboardUrlUseCase(
-        @ApplicationContext context: Context
-    ): com.piumal.filedownloadmanager.domain.usecase.GetClipboardUrlUseCase {
-        return com.piumal.filedownloadmanager.domain.usecase.GetClipboardUrlUseCase(context)
-    }
-
-    /**
-     * Provide Extract File Name Use Case
-     */
-    @Provides
-    @Singleton
-    fun provideExtractFileNameUseCase(): com.piumal.filedownloadmanager.domain.usecase.ExtractFileNameUseCase {
-        return com.piumal.filedownloadmanager.domain.usecase.ExtractFileNameUseCase()
-    }
+    // Note: StartDownloadUseCase, GetClipboardUrlUseCase, ExtractFileNameUseCase,
+    // and other use cases with @Inject constructor are automatically provided by Hilt.
+    // No need to manually provide them here.
 }
 

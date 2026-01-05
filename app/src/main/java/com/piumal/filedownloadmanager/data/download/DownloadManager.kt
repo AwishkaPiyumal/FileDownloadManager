@@ -249,21 +249,16 @@ class DownloadManager @Inject constructor(
 
     /**
      * Get download directory
-     * Uses app-specific external storage for Android 10+ (doesn't require permissions)
-     * Uses public Downloads folder for older Android versions
+     * Uses public Downloads folder so users can easily find their downloaded files
+     * This requires WRITE_EXTERNAL_STORAGE permission on Android 9 and below
+     * On Android 10+ with requestLegacyExternalStorage=true or Android 11+ with MANAGE_EXTERNAL_STORAGE
      */
-    private fun getDownloadDirectory(): File {
-        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            // Android 10+ (API 29+): Use app-specific external storage (no permission needed)
-            val appDownloadsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-            File(appDownloadsDir, "FileDownloadManager")
-        } else {
-            // Android 9 and below: Use public Downloads folder (requires permission)
-            val downloadsDir = Environment.getExternalStoragePublicDirectory(
-                Environment.DIRECTORY_DOWNLOADS
-            )
-            File(downloadsDir, "FileDownloadManager")
-        }
+    fun getDownloadDirectory(): File {
+        // Always use public Downloads folder for user accessibility
+        val downloadsDir = Environment.getExternalStoragePublicDirectory(
+            Environment.DIRECTORY_DOWNLOADS
+        )
+        return File(downloadsDir, "FileDownloadManager")
     }
 
     /**

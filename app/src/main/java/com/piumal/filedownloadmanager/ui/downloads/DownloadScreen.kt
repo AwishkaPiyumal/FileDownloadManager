@@ -15,6 +15,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.piumal.filedownloadmanager.domain.model.DownloadConfig
 import com.piumal.filedownloadmanager.domain.usecase.DownloadFilterType
 import com.piumal.filedownloadmanager.ui.downloads.components.AddDownloadDialog
+import com.piumal.filedownloadmanager.ui.downloads.components.DeleteSelectedConfirmDialog
 import com.piumal.filedownloadmanager.ui.downloads.components.DownloadFAB
 import com.piumal.filedownloadmanager.ui.downloads.components.DownloadList
 import com.piumal.filedownloadmanager.ui.downloads.components.FileExistsDialog
@@ -70,10 +71,11 @@ fun DownloadScreen(
         ) {
             // Show SelectionHeader when in selection mode, otherwise show tabs
             if (uiState.isSelectionMode) {
-                // Selection Header - shows selected count and close button
+                // Selection Header - shows selected count, delete button, and close button
                 SelectionHeader(
                     selectedCount = uiState.selectedCount,
-                    onClose = { viewModel.exitSelectionMode() }
+                    onClose = { viewModel.exitSelectionMode() },
+                    onDelete = { viewModel.showDeleteSelectedDialog() }
                 )
             } else {
                 // Normal mode - show tabs and sort button
@@ -201,6 +203,15 @@ fun DownloadScreen(
             fileName = uiState.existingFileName!!,
             onDismiss = { viewModel.dismissFileExistsDialog() },
             onContinue = { viewModel.continueDownloadWithRename() }
+        )
+    }
+
+    // Delete Selected Confirmation Dialog
+    if (uiState.showDeleteSelectedDialog) {
+        DeleteSelectedConfirmDialog(
+            selectedCount = uiState.selectedCount,
+            onConfirm = { viewModel.confirmDeleteSelected() },
+            onDismiss = { viewModel.dismissDeleteSelectedDialog() }
         )
     }
 

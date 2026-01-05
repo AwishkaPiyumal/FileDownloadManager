@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.piumal.filedownloadmanager.domain.usecase.PauseAllDownloadsUseCase
+import com.piumal.filedownloadmanager.domain.usecase.ResumeAllDownloadsUseCase
+import com.piumal.filedownloadmanager.domain.usecase.RetryAllDownloadsUseCase
 import com.piumal.filedownloadmanager.ui.downloads.components.MoreMenuAction
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -25,7 +27,9 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class MoreOptionsViewModel @Inject constructor(
-    private val pauseAllDownloadsUseCase: PauseAllDownloadsUseCase
+    private val pauseAllDownloadsUseCase: PauseAllDownloadsUseCase,
+    private val resumeAllDownloadsUseCase: ResumeAllDownloadsUseCase,
+    private val retryAllDownloadsUseCase: RetryAllDownloadsUseCase
 ) : ViewModel() {
 
     companion object {
@@ -43,6 +47,7 @@ class MoreOptionsViewModel @Inject constructor(
     // Event flow for showing toast messages to user
     private val _toastMessage = MutableSharedFlow<String>()
     val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
+
 
     /**
      * Show the more options menu
@@ -76,8 +81,6 @@ class MoreOptionsViewModel @Inject constructor(
                 is MoreMenuAction.PauseAll -> handlePauseAll()
                 is MoreMenuAction.ResumeAll -> handleResumeAll()
                 is MoreMenuAction.RetryAll -> handleRetryAll()
-                is MoreMenuAction.RemoveAll -> handleRemoveAll()
-                is MoreMenuAction.DeleteAll -> handleDeleteAll()
                 is MoreMenuAction.HowToDownload -> handleHowToDownload()
             }
         }
@@ -118,38 +121,54 @@ class MoreOptionsViewModel @Inject constructor(
 
     /**
      * Resume all paused downloads
+     * Uses ResumeAllDownloadsUseCase to resume all PAUSED items
      */
     private fun handleResumeAll() {
-        // TODO: Implement resume all downloads
-        // Call resumeAllDownloadsUseCase when implemented
+        viewModelScope.launch {
+            Log.d(TAG, "Resume All action triggered")
+            resumeAllDownloadsUseCase().fold(
+                onSuccess = { resumedCount ->
+                    Log.d(TAG, "Successfully resumed $resumedCount downloads")
+                    val message = if (resumedCount > 0) {
+                        "Resumed $resumedCount download${if (resumedCount > 1) "s" else ""}"
+                    } else {
+                        "No paused downloads to resume"
+                    }
+                    _toastMessage.emit(message)
+                },
+                onFailure = { error ->
+                    Log.e(TAG, "Failed to resume downloads: ${error.message}")
+                    _toastMessage.emit("Failed to resume downloads")
+                }
+            )
+        }
     }
 
     /**
      * Retry all failed downloads
+     * Uses RetryAllDownloadsUseCase to retry all FAILED items
      */
     private fun handleRetryAll() {
-        // TODO: Implement retry all failed downloads
-        // Call retryAllDownloadsUseCase when implemented
+        viewModelScope.launch {
+            Log.d(TAG, "Retry All action triggered")
+            retryAllDownloadsUseCase().fold(
+                onSuccess = { retriedCount ->
+                    Log.d(TAG, "Successfully retried $retriedCount downloads")
+                    val message = if (retriedCount > 0) {
+                        "Retrying $retriedCount download${if (retriedCount > 1) "s" else ""}"
+                    } else {
+                        "No failed downloads to retry"
+                    }
+                    _toastMessage.emit(message)
+                },
+                onFailure = { error ->
+                    Log.e(TAG, "Failed to retry downloads: ${error.message}")
+                    _toastMessage.emit("Failed to retry downloads")
+                }
+            )
+        }
     }
 
-    /**
-     * Remove all downloads from the list (keeps files)
-     */
-    private fun handleRemoveAll() {
-        // TODO: Implement remove all downloads from list
-        // Call removeAllDownloadsUseCase when implemented
-        // This removes records but keeps downloaded files
-    }
-
-    /**
-     * Delete all downloads and their files
-     */
-    private fun handleDeleteAll() {
-        // TODO: Implement delete all downloads and files
-        // Call deleteAllDownloadsUseCase when implemented
-        // This removes records AND deletes the files
-        // Should show confirmation dialog before executing
-    }
 
     /**
      * Show help/tutorial on how to download
