@@ -14,27 +14,10 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-/**
- * Hilt Module for Dependency Injection
- *
- * Provides dependencies for:
- * - Database
- * - Repository
- * - Download Manager
- *
- * Note: Use Cases with @Inject constructor are automatically provided by Hilt.
- *
- * Follows Clean Architecture with proper dependency direction
- *
- * @author File Download Manager Team
- */
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-    /**
-     * Provide Room Database
-     */
     @Provides
     @Singleton
     fun provideDownloadDatabase(
@@ -49,18 +32,12 @@ object AppModule {
             .build()
     }
 
-    /**
-     * Provide Download DAO
-     */
     @Provides
     @Singleton
     fun provideDownloadDao(database: DownloadDatabase): DownloadDao {
         return database.downloadDao()
     }
 
-    /**
-     * Provide Download Manager
-     */
     @Provides
     @Singleton
     fun provideDownloadManager(
@@ -69,10 +46,6 @@ object AppModule {
         return DownloadManager(context)
     }
 
-    /**
-     * Provide Download Repository
-     * Binds implementation to interface
-     */
     @Provides
     @Singleton
     fun provideDownloadRepository(
@@ -82,9 +55,5 @@ object AppModule {
     ): DownloadRepository {
         return DownloadRepositoryImpl(context, downloadDao, downloadManager)
     }
-
-    // Note: StartDownloadUseCase, GetClipboardUrlUseCase, ExtractFileNameUseCase,
-    // and other use cases with @Inject constructor are automatically provided by Hilt.
-    // No need to manually provide them here.
 }
 
