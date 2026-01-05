@@ -410,6 +410,28 @@ class DownloadScreenViewModel @Inject constructor(
     }
 
     /**
+     * Toggle select all - if all selected, deselect all; otherwise select all
+     */
+    fun toggleSelectAll() {
+        _uiState.update { currentState ->
+            val allIds = currentState.displayedDownloads.map { it.id }.toSet()
+            val isAllSelected = currentState.selectedDownloadIds.size == allIds.size && allIds.isNotEmpty()
+
+            if (isAllSelected) {
+                // Deselect all
+                currentState.copy(selectedDownloadIds = emptySet())
+            } else {
+                // Select all
+                currentState.copy(
+                    isSelectionMode = true,
+                    selectedDownloadIds = allIds
+                )
+            }
+        }
+        Log.d("DownloadScreenVM", "Toggled select all")
+    }
+
+    /**
      * Deselect all downloads
      */
     fun deselectAll() {

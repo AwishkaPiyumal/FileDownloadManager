@@ -71,11 +71,13 @@ fun DownloadScreen(
         ) {
             // Show SelectionHeader when in selection mode, otherwise show tabs
             if (uiState.isSelectionMode) {
-                // Selection Header - shows selected count, delete button, and close button
+                // Selection Header - shows selected count, select all option, delete button, and close button
                 SelectionHeader(
                     selectedCount = uiState.selectedCount,
+                    totalCount = uiState.displayedDownloads.size,
                     onClose = { viewModel.exitSelectionMode() },
-                    onDelete = { viewModel.showDeleteSelectedDialog() }
+                    onDelete = { viewModel.showDeleteSelectedDialog() },
+                    onSelectAll = { viewModel.toggleSelectAll() }
                 )
             } else {
                 // Normal mode - show tabs and sort button
