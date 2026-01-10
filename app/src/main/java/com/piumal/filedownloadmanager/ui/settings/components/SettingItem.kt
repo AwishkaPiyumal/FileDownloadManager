@@ -24,13 +24,13 @@ import com.piumal.filedownloadmanager.ui.theme.FileDownloadManagerTheme
  * A reusable setting item row that displays:
  * - Title text on the left
  * - Toggle switch on the right (for boolean settings)
- *
- * Icons will be added later as guided.
+ * - Optional subtitle/value text
  */
 @Composable
 fun SettingItem(
     modifier: Modifier = Modifier,
     title: String,
+    subtitle: String? = null,
     hasSwitch: Boolean = false,
     isEnabled: Boolean = false,
     onToggle: () -> Unit = {},
@@ -42,16 +42,27 @@ fun SettingItem(
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.background)
             .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Title text
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground
-        )
+        // Title and subtitle column
+        androidx.compose.foundation.layout.Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
+        }
 
         // Switch for toggle settings
         if (hasSwitch) {
@@ -67,11 +78,11 @@ fun SettingItem(
             )
         }
 
-        // Chevron for navigation items (placeholder - icon to be added later)
+        // Chevron for navigation items
         if (hasChevron) {
             Text(
                 text = ">",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
         }
