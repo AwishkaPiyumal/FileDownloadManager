@@ -11,18 +11,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.piumal.filedownloadmanager.R
-import com.piumal.filedownloadmanager.data.repository.ClipboardRepositoryImpl
+
 import com.piumal.filedownloadmanager.domain.model.DownloadConfig
 import com.piumal.filedownloadmanager.domain.usecase.ExtractFileNameUseCase
 import com.piumal.filedownloadmanager.domain.usecase.GetClipboardUrlUseCase
 import com.piumal.filedownloadmanager.ui.downloads.viewmodel.AddDownloadViewModel
-import com.piumal.filedownloadmanager.ui.theme.FileDownloadManagerTheme
+
 
 /**
  * Dialog for adding new downloads with URL, file path, and scheduling options
@@ -283,76 +282,4 @@ private fun createAddDownloadViewModel(): AddDownloadViewModel {
     }
 }
 
-@Preview(name = "Light Mode")
-@Composable
-fun AddDownloadDialogLightPreview() {
-    FileDownloadManagerTheme(darkTheme = false) {
-        // Preview with mock ViewModel for preview purposes
-        Box(modifier = Modifier.fillMaxSize()) {
-            // Preview placeholder
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth(0.9f)
-                    .wrapContentHeight()
-                    .align(Alignment.Center),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 6.dp
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Add Download",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Preview Mode",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Preview(name = "Dark Mode")
-@Composable
-fun AddDownloadDialogDarkPreview() {
-    FileDownloadManagerTheme(darkTheme = true) {
-        // Preview with mock ViewModel for preview purposes
-        Box(modifier = Modifier.fillMaxSize()) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth(0.9f)
-                    .wrapContentHeight()
-                    .align(Alignment.Center),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 6.dp
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Add Download",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Preview Mode",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-        }
-    }
-}
 

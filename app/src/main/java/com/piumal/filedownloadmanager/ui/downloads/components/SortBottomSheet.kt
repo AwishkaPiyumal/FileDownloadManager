@@ -7,9 +7,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.piumal.filedownloadmanager.ui.theme.FileDownloadManagerTheme
+
 
 enum class SortCategory {
     DATE,
@@ -220,39 +219,4 @@ fun SortBottomSheet(
     }
 }
 
-@Preview(name = "Light Mode - Name Ascending")
-@Composable
-fun SortBottomSheetLightPreview() {
-    FileDownloadManagerTheme(darkTheme = false) {
-        SortBottomSheet(
-            onDismiss = {},
-            selectedOption = SortOption.NAME_ASC,
-            onSortSelected = {}
-        )
-    }
-}
-
-@Preview(name = "Dark Mode - Date Descending")
-@Composable
-fun SortBottomSheetDarkPreview() {
-    FileDownloadManagerTheme(darkTheme = true) {
-        SortBottomSheet(
-            onDismiss = {},
-            selectedOption = SortOption.DATE_DESC,
-            onSortSelected = {}
-        )
-    }
-}
-
-@Preview(name = "Light Mode - Size Ascending")
-@Composable
-fun SortBottomSheetSizePreview() {
-    FileDownloadManagerTheme(darkTheme = false) {
-        SortBottomSheet(
-            onDismiss = {},
-            selectedOption = SortOption.SIZE_ASC,
-            onSortSelected = {}
-        )
-    }
-}
 

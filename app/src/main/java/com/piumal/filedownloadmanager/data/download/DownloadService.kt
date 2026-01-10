@@ -3,7 +3,6 @@ package com.piumal.filedownloadmanager.data.download
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -11,8 +10,6 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.piumal.filedownloadmanager.MainActivity
-import com.piumal.filedownloadmanager.R
 import com.piumal.filedownloadmanager.data.local.dao.DownloadDao
 import com.piumal.filedownloadmanager.domain.model.DownloadStatus
 import dagger.hilt.android.AndroidEntryPoint
@@ -185,7 +182,21 @@ class DownloadService : Service() {
                 }
             }
             ACTION_RESUME_ALL_PENDING -> {
-                Log.d(TAG, "ACTION_RESUME_ALL_PENDING")
+                Log.d(TAG, "ACTION_RESUME_ALL_PENDING - Network restored, retrying failed downloads")
+
+                // Start foreground immediately to prevent service from being killed
+                if (!isForegroundStarted) {
+                    try {
+                        createNotificationChannel()
+                        val notification = createForegroundNotification()
+                        startForeground(FOREGROUND_NOTIFICATION_ID, notification)
+                        isForegroundStarted = true
+                        Log.d(TAG, "Foreground started for resume all pending")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error starting foreground for resume all", e)
+                    }
+                }
+
                 resumeAllPendingDownloads()
             }
             else -> {
@@ -204,6 +215,7 @@ class DownloadService : Service() {
 
     override fun onDestroy() {
         Log.d(TAG, "Service destroyed")
+
         serviceScope.cancel()
         super.onDestroy()
     }
@@ -485,24 +497,44 @@ class DownloadService : Service() {
         checkAndStopService()
     }
 
-    /**
-     * Resume all pending/paused downloads
-     * Called on boot or network restore
-     */
     private fun resumeAllPendingDownloads() {
+        Log.d(TAG, "=== resumeAllPendingDownloads called ===")
+
         serviceScope.launch {
-            val pendingDownloads = downloadDao.getDownloadsByStatuses(
-                listOf(
-                    DownloadStatus.PAUSED.name,
-                    DownloadStatus.QUEUED.name,
-                    DownloadStatus.FAILED.name
+            try {
+                // Wait for network to stabilize before retrying
+                Log.d(TAG, "Waiting 2 seconds for network to stabilize...")
+                kotlinx.coroutines.delay(2000)
+
+                val pendingDownloads = downloadDao.getDownloadsByStatuses(
+                    listOf(
+                        DownloadStatus.PAUSED.name,
+                        DownloadStatus.QUEUED.name,
+                        DownloadStatus.FAILED.name
+                    )
                 )
-            )
 
-            Log.d(TAG, "Resuming ${pendingDownloads.size} pending downloads")
+                Log.d(TAG, "Found ${pendingDownloads.size} pending/failed downloads to resume")
 
-            pendingDownloads.forEach { download ->
-                startDownload(download.id)
+                if (pendingDownloads.isEmpty()) {
+                    Log.d(TAG, "No downloads to resume")
+                    checkAndStopService()
+                    return@launch
+                }
+
+                pendingDownloads.forEach { download ->
+                    Log.d(TAG, "Retrying download: ${download.fileName} (ID: ${download.id}, status: ${download.status})")
+
+                    // Update status to QUEUED before starting
+                    downloadDao.updateStatus(download.id, DownloadStatus.QUEUED.name, System.currentTimeMillis())
+
+                    startDownload(download.id)
+                    kotlinx.coroutines.delay(500)
+                }
+
+                Log.d(TAG, "Finished queuing all pending downloads for retry")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in resumeAllPendingDownloads", e)
             }
         }
     }

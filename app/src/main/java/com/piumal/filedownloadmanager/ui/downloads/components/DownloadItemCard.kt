@@ -12,12 +12,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.piumal.filedownloadmanager.R
 import com.piumal.filedownloadmanager.domain.model.DownloadItem
 import com.piumal.filedownloadmanager.domain.model.DownloadStatus
-import com.piumal.filedownloadmanager.ui.theme.FileDownloadManagerTheme
 import java.util.Locale
 import kotlin.math.log10
 import kotlin.math.pow
@@ -40,6 +38,7 @@ import kotlin.math.pow
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DownloadItemCard(
+    modifier: Modifier = Modifier,
     downloadItem: DownloadItem,
     onMoreClick: (DownloadItem) -> Unit,
     onPauseClick: (String) -> Unit = {},
@@ -49,7 +48,7 @@ fun DownloadItemCard(
     isSelected: Boolean = false,
     onLongPress: (String) -> Unit = {},
     onItemClick: (String) -> Unit = {},
-    modifier: Modifier = Modifier
+
 ) {
     var showMoreMenu by remember { mutableStateOf(false) }
     // Theme colors
@@ -298,10 +297,6 @@ private fun formatBytes(bytes: Long): String {
     return String.format(Locale.US, "%.2f %s", size, units[digitGroups])
 }
 
-/**
- * Get human-readable status text
- * Follows Google Play Store policy - clear and honest information
- */
 private fun getStatusText(status: DownloadStatus): String {
     return when (status) {
         DownloadStatus.PENDING -> "Pending"
@@ -314,10 +309,6 @@ private fun getStatusText(status: DownloadStatus): String {
     }
 }
 
-/**
- * Get status-specific color
- * Provides visual feedback following Material Design 3 guidelines
- */
 @Composable
 private fun getStatusColor(status: DownloadStatus, colorScheme: ColorScheme): androidx.compose.ui.graphics.Color {
     return when (status) {
@@ -331,126 +322,4 @@ private fun getStatusColor(status: DownloadStatus, colorScheme: ColorScheme): an
     }
 }
 
-
-//More options menu
-
-/**
- * Preview for downloading state
- */
-@Preview(showBackground = true, name = "Download In Progress")
-@Composable
-fun DownloadItemCardDownloadingPreview() {
-    FileDownloadManagerTheme {
-        Surface {
-            DownloadItemCard(
-                downloadItem = DownloadItem(
-                    id = "1",
-                    fileName = "example_video.mp4",
-                    downloadedSize = 25 * 1024 * 1024, // 25 MB
-                    totalSize = 100 * 1024 * 1024, // 100 MB
-                    status = DownloadStatus.DOWNLOADING,
-                    url = "https://example.com/video.mp4",
-                    filePath = "/storage/emulated/0/Download/FileDownloadManager/"
-                ),
-                onMoreClick = {}
-            )
-        }
-    }
-}
-
-/**
- * Preview for paused state
- */
-@Preview(showBackground = true, name = "Download Paused")
-@Composable
-fun DownloadItemCardPausedPreview() {
-    FileDownloadManagerTheme {
-        Surface {
-            DownloadItemCard(
-                downloadItem = DownloadItem(
-                    id = "2",
-                    fileName = "document_file_with_very_long_name.pdf",
-                    downloadedSize = 50 * 1024 * 1024, // 50 MB
-                    totalSize = 100 * 1024 * 1024, // 100 MB
-                    status = DownloadStatus.PAUSED,
-                    url = "https://example.com/document.pdf",
-                    filePath = "/storage/emulated/0/Download/FileDownloadManager/"
-                ),
-                onMoreClick = {}
-            )
-        }
-    }
-}
-
-/**
- * Preview for completed state
- */
-@Preview(showBackground = true, name = "Download Completed")
-@Composable
-fun DownloadItemCardCompletedPreview() {
-    FileDownloadManagerTheme {
-        Surface {
-            DownloadItemCard(
-                downloadItem = DownloadItem(
-                    id = "3",
-                    fileName = "presentation.pptx",
-                    downloadedSize = 15 * 1024 * 1024, // 15 MB
-                    totalSize = 15 * 1024 * 1024, // 15 MB
-                    status = DownloadStatus.COMPLETED,
-                    url = "https://example.com/presentation.pptx",
-                    filePath = "/storage/emulated/0/Download/FileDownloadManager/"
-                ),
-                onMoreClick = {}
-            )
-        }
-    }
-}
-
-/**
- * Preview for failed state
- */
-@Preview(showBackground = true, name = "Download Failed")
-@Composable
-fun DownloadItemCardFailedPreview() {
-    FileDownloadManagerTheme {
-        Surface {
-            DownloadItemCard(
-                downloadItem = DownloadItem(
-                    id = "4",
-                    fileName = "image.jpg",
-                    downloadedSize = 2 * 1024 * 1024, // 2 MB
-                    totalSize = 10 * 1024 * 1024, // 10 MB
-                    status = DownloadStatus.FAILED,
-                    url = "https://example.com/image.jpg",
-                    filePath = "/storage/emulated/0/Download/FileDownloadManager/"
-                ),
-                onMoreClick = {}
-            )
-        }
-    }
-}
-
-/**
- * Preview for dark theme
- */
-@Preview(showBackground = true, name = "Dark Theme", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun DownloadItemCardDarkPreview() {
-    FileDownloadManagerTheme {
-        Surface {
-            DownloadItemCard(
-                downloadItem = DownloadItem(
-                    id = "5",
-                    fileName = "archive.zip",
-                    downloadedSize = 75 * 1024 * 1024, // 75 MB
-                    totalSize = 200 * 1024 * 1024, // 200 MB
-                    status = DownloadStatus.DOWNLOADING,
-                    url = "https://example.com/archive.zip",
-                    filePath = "/storage/emulated/0/Download/FileDownloadManager/"
-                ),
-                onMoreClick = {}
-            )
-        }
-    }
-}
 

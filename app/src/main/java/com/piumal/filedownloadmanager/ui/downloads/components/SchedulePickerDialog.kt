@@ -10,11 +10,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.piumal.filedownloadmanager.ui.theme.FileDownloadManagerTheme
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -350,28 +348,4 @@ fun formatDateTime(timestamp: Long): String {
     return sdf.format(Date(timestamp))
 }
 
-// Preview
-@Preview(showBackground = true)
-@Composable
-fun SchedulePickerDialogPreview() {
-    FileDownloadManagerTheme {
-        SchedulePickerDialog(
-            initialDateTime = System.currentTimeMillis(),
-            onDismiss = {},
-            onConfirm = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun SchedulePickerDialogDarkPreview() {
-    FileDownloadManagerTheme {
-        SchedulePickerDialog(
-            initialDateTime = System.currentTimeMillis(),
-            onDismiss = {},
-            onConfirm = {}
-        )
-    }
-}
 
