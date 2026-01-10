@@ -64,6 +64,12 @@ fun MainScreen(
     // Collect menu state from ViewModel
     val isMenuExpanded by moreOptionsViewModel.isMenuExpanded.collectAsState()
 
+    // Collect selection mode state to hide more_vert when in selection mode
+    val isSelectionModeActive by moreOptionsViewModel.isSelectionModeActive.collectAsState()
+
+    // Collect selected count for delete button opacity
+    val selectedCount by moreOptionsViewModel.selectedCount.collectAsState()
+
     // Observe toast messages from MoreOptionsViewModel
     LaunchedEffect(Unit) {
         moreOptionsViewModel.toastMessage.collect { message ->
@@ -126,8 +132,26 @@ fun MainScreen(
                             }
                         },
                         actions = {
-                            // Show more_vert icon only on downloads screen
-                            if (currentRoute == "downloads") {
+                            // Show delete icon when in selection mode on downloads screen
+                            if (currentRoute == "downloads" && isSelectionModeActive) {
+                                val deleteIconAlpha = if (selectedCount > 0) 1f else 0.4f
+                                IconButton(
+                                    onClick = { moreOptionsViewModel.triggerDeleteSelected() },
+                                    enabled = selectedCount > 0,
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .padding(end = 16.dp)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = com.piumal.filedownloadmanager.R.drawable.delete_24px),
+                                        contentDescription = "Delete selected",
+                                        tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = deleteIconAlpha),
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                            }
+                            // Show more_vert icon only on downloads screen and not in selection mode
+                            else if (currentRoute == "downloads" && !isSelectionModeActive) {
                                 // Box wrapper to position the dropdown menu correctly
                                 Box {
                                     IconButton(

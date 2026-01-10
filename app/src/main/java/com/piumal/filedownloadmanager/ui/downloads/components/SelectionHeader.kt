@@ -1,6 +1,6 @@
 package com.piumal.filedownloadmanager.ui.downloads.components
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,13 +19,13 @@ import com.piumal.filedownloadmanager.R
  * Selection Header Component
  *
  * Displays when user is in selection mode.
- * Shows the count of selected items, select all option, delete button, and a close button to exit selection mode.
+ * Shows the count of selected items, select all option, and a close button to exit selection mode.
+ * Delete button is shown in TopAppBar instead.
  *
  * @param selectedCount Number of currently selected items
  * @param totalCount Total number of items available for selection
  * @param onClose Callback when close button is clicked (exits selection mode)
- * @param onDelete Callback when delete button is clicked (deletes selected items)
- * @param onSelectAll Callback when "All" is clicked (selects/deselects all items)
+ * @param onSelectAll Callback when "Select All" / "Deselect All" is clicked
  * @param modifier Optional modifier for styling
  */
 @Composable
@@ -33,96 +33,92 @@ fun SelectionHeader(
     selectedCount: Int,
     totalCount: Int,
     onClose: () -> Unit,
-    onDelete: () -> Unit,
     onSelectAll: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Determine if all items are selected
     val isAllSelected = totalCount > 0 && selectedCount == totalCount
 
-    // Determine delete icon opacity based on selection state
-    val deleteIconAlpha = if (selectedCount > 0) 1f else 0.4f
-
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left side - Select All option with check circle
+        // Left side - Select All / Deselect All option (weight 1)
+        Box(
+            modifier = Modifier.weight(1f),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(25.dp))
+                    .border(
+                        width = 0.5.dp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(25.dp)
+                    )
+                    .clickable { onSelectAll() }
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = painterResource(
+                        id = if (isAllSelected) R.drawable.check_circle_24px else R.drawable.radio_button_unchecked_24px
+                    ),
+                    contentDescription = if (isAllSelected) "Deselect all" else "Select all",
+                    tint = if (isAllSelected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = if (isAllSelected) "Deselect All" else "Select All",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+
+        // Center - Selection count inside bordered box
         Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(4.dp))
-                .clickable { onSelectAll() }
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                .clip(RoundedCornerShape(25.dp))
+                .border(
+                    width = 0.5.dp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(25.dp)
+                )
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Check circle icon - changes based on selection state
-            Icon(
-                painter = painterResource(
-                    id = if (isAllSelected) R.drawable.check_circle_24px else R.drawable.radio_button_unchecked_24px
-                ),
-                contentDescription = if (isAllSelected) "All selected" else "Select all",
-                tint = if (isAllSelected) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
-                modifier = Modifier.size(24.dp)
-            )
-
-            // "All" text
             Text(
-                text = "All",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                text = "$selectedCount Selected",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onBackground
             )
         }
 
-        // Center - Selection count text (uses weight to take remaining space and center)
-        Text(
-            text = "$selectedCount Selected",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground,
+        // Right side - Close button (weight 1)
+        Box(
             modifier = Modifier.weight(1f),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-        )
-
-        // Right side - Action buttons row
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            contentAlignment = Alignment.CenterEnd
         ) {
-            // Delete button - deletes selected items
-            // Lower opacity when no items selected, full opacity when items are selected
-            IconButton(
-                onClick = onDelete,
-                modifier = Modifier.size(32.dp),
-                enabled = selectedCount > 0
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.delete_24px),
-                    contentDescription = "Delete selected items",
-                    tint = MaterialTheme.colorScheme.onBackground.copy(alpha = deleteIconAlpha)
-                )
-            }
-
-            // Close button to exit selection mode - using onBackground color
             IconButton(
                 onClick = onClose,
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(28.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Exit selection mode",
-                    tint = MaterialTheme.colorScheme.onBackground
+                    tint = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
     }
 }
-
-
