@@ -40,9 +40,21 @@ class MoreOptionsViewModel @Inject constructor(
     private val _isMenuExpanded = MutableStateFlow(false)
     val isMenuExpanded: StateFlow<Boolean> = _isMenuExpanded.asStateFlow()
 
+    // State for selection mode - shared with MainScreen to hide more_vert icon
+    private val _isSelectionModeActive = MutableStateFlow(false)
+    val isSelectionModeActive: StateFlow<Boolean> = _isSelectionModeActive.asStateFlow()
+
+    // State for selected count - shared with MainScreen for delete button
+    private val _selectedCount = MutableStateFlow(0)
+    val selectedCount: StateFlow<Int> = _selectedCount.asStateFlow()
+
     // Event flow for triggering selection mode in DownloadScreen
     private val _selectionModeEvent = MutableSharedFlow<Boolean>()
     val selectionModeEvent: SharedFlow<Boolean> = _selectionModeEvent.asSharedFlow()
+
+    // Event flow for triggering delete action in DownloadScreen
+    private val _deleteSelectedEvent = MutableSharedFlow<Unit>()
+    val deleteSelectedEvent: SharedFlow<Unit> = _deleteSelectedEvent.asSharedFlow()
 
     // Event flow for showing toast messages to user
     private val _toastMessage = MutableSharedFlow<String>()
@@ -176,6 +188,32 @@ class MoreOptionsViewModel @Inject constructor(
     private fun handleHowToDownload() {
         // TODO: Implement navigation to help screen or show tutorial
         // Navigate to help screen or show a dialog with instructions
+    }
+
+    /**
+     * Set selection mode active state
+     * Called from DownloadScreen when selection mode changes
+     */
+    fun setSelectionModeActive(isActive: Boolean) {
+        _isSelectionModeActive.value = isActive
+    }
+
+    /**
+     * Set selected count
+     * Called from DownloadScreen when selection changes
+     */
+    fun setSelectedCount(count: Int) {
+        _selectedCount.value = count
+    }
+
+    /**
+     * Trigger delete selected action
+     * Called from MainScreen when delete button is clicked
+     */
+    fun triggerDeleteSelected() {
+        viewModelScope.launch {
+            _deleteSelectedEvent.emit(Unit)
+        }
     }
 }
 

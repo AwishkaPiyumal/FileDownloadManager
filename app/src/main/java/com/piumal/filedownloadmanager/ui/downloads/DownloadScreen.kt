@@ -1,5 +1,6 @@
 package com.piumal.filedownloadmanager.ui.downloads
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -50,6 +51,28 @@ fun DownloadScreen(
         }
     }
 
+    // Handle delete event from TopAppBar delete button
+    LaunchedEffect(Unit) {
+        moreOptionsViewModel.deleteSelectedEvent.collect {
+            viewModel.showDeleteSelectedDialog()
+        }
+    }
+
+    // Notify MoreOptionsViewModel when selection mode changes (to hide more_vert in TopAppBar)
+    LaunchedEffect(uiState.isSelectionMode) {
+        moreOptionsViewModel.setSelectionModeActive(uiState.isSelectionMode)
+    }
+
+    // Sync selected count with MoreOptionsViewModel for TopAppBar delete button
+    LaunchedEffect(uiState.selectedCount) {
+        moreOptionsViewModel.setSelectedCount(uiState.selectedCount)
+    }
+
+    // Handle back button press - exit selection mode instead of navigating back
+    BackHandler(enabled = uiState.isSelectionMode) {
+        viewModel.exitSelectionMode()
+    }
+
     // Update filter type when tab changes
     LaunchedEffect(selectedTabIndex) {
         val filterType = when (selectedTabIndex) {
@@ -69,12 +92,11 @@ fun DownloadScreen(
         ) {
             // Show SelectionHeader when in selection mode, otherwise show tabs
             if (uiState.isSelectionMode) {
-                // Selection Header - shows selected count, select all option, delete button, and close button
+                // Selection Header - shows selected count, select all option, and close button
                 SelectionHeader(
                     selectedCount = uiState.selectedCount,
                     totalCount = uiState.displayedDownloads.size,
                     onClose = { viewModel.exitSelectionMode() },
-                    onDelete = { viewModel.showDeleteSelectedDialog() },
                     onSelectAll = { viewModel.toggleSelectAll() }
                 )
             } else {
@@ -165,12 +187,15 @@ fun DownloadScreen(
             }
         }
 
-        DownloadFAB(
-            onClick = { viewModel.showAddDownloadDialog() },
-            modifier = Modifier
-                .padding(end = 24.dp, bottom = 52.dp)
-                .align(Alignment.BottomEnd)
-        )
+        // Hide FAB when selection mode is active
+        if (!uiState.isSelectionMode) {
+            DownloadFAB(
+                onClick = { viewModel.showAddDownloadDialog() },
+                modifier = Modifier
+                    .padding(end = 24.dp, bottom = 52.dp)
+                    .align(Alignment.BottomEnd)
+            )
+        }
     }
 
     // Sort Bottom Sheet
