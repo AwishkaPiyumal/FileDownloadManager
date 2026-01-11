@@ -217,7 +217,10 @@ fun MainScreen(
                 }
             }
         ) { paddingValues ->
-            Surface(modifier = modifier.padding(paddingValues)) {
+            Surface(
+                modifier = modifier.padding(paddingValues),
+                color = MaterialTheme.colorScheme.background
+            ) {
                 content(navController, moreOptionsViewModel)
             }
         }

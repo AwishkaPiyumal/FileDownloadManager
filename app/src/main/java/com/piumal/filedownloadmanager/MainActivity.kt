@@ -14,16 +14,24 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
 import androidx.navigation.compose.rememberNavController
+import com.piumal.filedownloadmanager.domain.manager.ThemeManager
 import com.piumal.filedownloadmanager.ui.theme.FileDownloadManagerTheme
 import dagger.hilt.android.AndroidEntryPoint
 import com.piumal.filedownloadmanager.ui.MainScreen
+import javax.inject.Inject
 
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var themeManager: ThemeManager
 
     // Permission launcher for POST_NOTIFICATIONS (Android 13+)
     private val notificationPermissionLauncher = registerForActivityResult(
@@ -74,7 +82,14 @@ class MainActivity : ComponentActivity() {
             requestStoragePermission()
 
             setContent {
-                FileDownloadManagerTheme {
+                // Observe dark mode setting from ThemeManager
+                val isDarkModeEnabled by themeManager.isDarkMode.collectAsState()
+                val systemInDarkTheme = isSystemInDarkTheme()
+
+                // Use dark theme if user enabled it OR if system is in dark mode
+                val useDarkTheme = isDarkModeEnabled || systemInDarkTheme
+
+                FileDownloadManagerTheme(darkTheme = useDarkTheme) {
                     val navController = rememberNavController()
                     val drawerState = rememberDrawerState(DrawerValue.Closed)
                     MainScreen(navController = navController, drawerState = drawerState)
@@ -84,7 +99,11 @@ class MainActivity : ComponentActivity() {
             Log.e("MainActivity", "Error during onCreate", e)
             // Try to show minimal UI on error
             setContent {
-                FileDownloadManagerTheme {
+                val isDarkModeEnabled by themeManager.isDarkMode.collectAsState()
+                val systemInDarkTheme = isSystemInDarkTheme()
+                val useDarkTheme = isDarkModeEnabled || systemInDarkTheme
+
+                FileDownloadManagerTheme(darkTheme = useDarkTheme) {
                     Surface {
                         Text("Error loading app. Please restart.")
                     }
