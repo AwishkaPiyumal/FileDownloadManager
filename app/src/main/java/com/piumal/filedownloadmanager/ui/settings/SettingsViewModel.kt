@@ -25,7 +25,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         private const val KEY_DARK_MODE = "dark_mode"
         // Download Settings
         private const val KEY_DEFAULT_DOWNLOAD_FOLDER = "default_download_folder"
-        private const val KEY_FIXED_DEFAULT_FOLDER = "fixed_default_folder"
         private const val KEY_AUTO_FETCH_URL = "auto_fetch_url"
         private const val KEY_ASK_DOWNLOAD_FOLDER = "ask_download_folder"
         private const val KEY_PARALLEL_DOWNLOAD = "parallel_download"
@@ -56,7 +55,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     darkMode = sharedPreferences.getBoolean(KEY_DARK_MODE, false),
                     // Download Settings
                     defaultDownloadFolder = sharedPreferences.getString(KEY_DEFAULT_DOWNLOAD_FOLDER, "Download/FileDownloadManager") ?: "Download/FileDownloadManager",
-                    fixedDefaultDownloadFolder = sharedPreferences.getBoolean(KEY_FIXED_DEFAULT_FOLDER, false),
                     autoFetchUrl = sharedPreferences.getBoolean(KEY_AUTO_FETCH_URL, true),
                     askDownloadFolder = sharedPreferences.getBoolean(KEY_ASK_DOWNLOAD_FOLDER, false),
                     parallelFileDownload = sharedPreferences.getInt(KEY_PARALLEL_DOWNLOAD, 3),
@@ -85,6 +83,29 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _uiState.update { it.copy(isAdvancedSettingsExpanded = !it.isAdvancedSettingsExpanded) }
     }
 
+    // Dialog visibility functions
+    fun showFolderPickerDialog() {
+        _uiState.update { it.copy(showFolderPickerDialog = true) }
+    }
+
+    fun hideFolderPickerDialog() {
+        _uiState.update { it.copy(showFolderPickerDialog = false) }
+    }
+
+    fun showParallelDownloadDialog() {
+        _uiState.update { it.copy(showParallelDownloadDialog = true) }
+    }
+
+    fun hideParallelDownloadDialog() {
+        _uiState.update { it.copy(showParallelDownloadDialog = false) }
+    }
+
+    // Update default download folder
+    fun updateDefaultDownloadFolder(folder: String) {
+        _uiState.update { it.copy(defaultDownloadFolder = folder, showFolderPickerDialog = false) }
+        saveString(KEY_DEFAULT_DOWNLOAD_FOLDER, folder)
+    }
+
     // General settings
     fun toggleMobileData() {
         val newValue = !_uiState.value.useMobileData
@@ -99,11 +120,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     // Download settings
-    fun toggleFixedDefaultFolder() {
-        val newValue = !_uiState.value.fixedDefaultDownloadFolder
-        _uiState.update { it.copy(fixedDefaultDownloadFolder = newValue) }
-        saveBoolean(KEY_FIXED_DEFAULT_FOLDER, newValue)
-    }
 
     fun toggleAutoFetchUrl() {
         val newValue = !_uiState.value.autoFetchUrl
@@ -136,7 +152,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun setParallelDownload(count: Int) {
-        _uiState.update { it.copy(parallelFileDownload = count) }
+        _uiState.update { it.copy(parallelFileDownload = count, showParallelDownloadDialog = false) }
         saveInt(KEY_PARALLEL_DOWNLOAD, count)
     }
 

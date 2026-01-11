@@ -42,8 +42,18 @@ fun getScreenTitle(route: String): String {
         "settings" -> "Settings"
         "help" -> "Help & Support"
         "info" -> "About"
+        "download_settings" -> "Download Settings"
+        "notification_settings" -> "Notification"
+        "advanced_settings" -> "Advanced Settings"
         else -> "File Download Manager"
     }
+}
+
+/**
+ * Check if the current route is a settings detail screen
+ */
+fun isSettingsDetailScreen(route: String): Boolean {
+    return route in listOf("download_settings", "notification_settings", "advanced_settings")
 }
 
 @Composable
@@ -117,18 +127,35 @@ fun MainScreen(
                         },
 
                         navigationIcon = {
-                            IconButton(
-                                onClick = { scope.launch { drawerState.open() } },
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .padding(start = 16.dp, end = 4.dp)
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = com.piumal.filedownloadmanager.R.drawable.menu_24px),
-                                    contentDescription = "Menu",
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(35.dp)
-                                )
+                            // Show close icon for settings detail screens, menu icon otherwise
+                            if (isSettingsDetailScreen(currentRoute)) {
+                                IconButton(
+                                    onClick = { navController.popBackStack() },
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .padding(start = 16.dp, end = 4.dp)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = com.piumal.filedownloadmanager.R.drawable.close_24px),
+                                        contentDescription = "Close",
+                                        tint = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                            } else {
+                                IconButton(
+                                    onClick = { scope.launch { drawerState.open() } },
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .padding(start = 16.dp, end = 4.dp)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = com.piumal.filedownloadmanager.R.drawable.menu_24px),
+                                        contentDescription = "Menu",
+                                        tint = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.size(35.dp)
+                                    )
+                                }
                             }
                         },
                         actions = {

@@ -12,13 +12,16 @@ data class SettingsUiState(
     val isNotificationExpanded: Boolean = false,
     val isAdvancedSettingsExpanded: Boolean = false,
 
+    // Dialog visibility states
+    val showFolderPickerDialog: Boolean = false,
+    val showParallelDownloadDialog: Boolean = false,
+
     // General settings
     val useMobileData: Boolean = false,
     val darkMode: Boolean = false,
 
     // Download settings
     val defaultDownloadFolder: String = "Download/FileDownloadManager",
-    val fixedDefaultDownloadFolder: Boolean = false,
     val autoFetchUrl: Boolean = true,
     val askDownloadFolder: Boolean = false,
     val parallelFileDownload: Int = 3,

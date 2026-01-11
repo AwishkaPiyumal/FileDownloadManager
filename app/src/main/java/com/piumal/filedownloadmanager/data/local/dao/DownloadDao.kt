@@ -76,6 +76,13 @@ interface DownloadDao {
     suspend fun updateProgress(id: String, downloadedSize: Long, totalSize: Long, updatedAt: Long)
 
     /**
+     * Get downloads by status ordered by creation date (oldest first - FIFO)
+     * Used for queue management
+     */
+    @Query("SELECT * FROM downloads WHERE status = :status ORDER BY createdAt ASC")
+    suspend fun getDownloadsByStatusOrderedByCreated(status: String): List<DownloadEntity>
+
+    /**
      * Update download status
      */
     @Query("UPDATE downloads SET status = :status, updatedAt = :updatedAt WHERE id = :id")

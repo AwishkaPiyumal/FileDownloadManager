@@ -2,19 +2,29 @@ package com.piumal.filedownloadmanager.ui.settings
 
 import android.content.res.Configuration
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.piumal.filedownloadmanager.R
 import com.piumal.filedownloadmanager.ui.settings.components.CollapsibleSection
 import com.piumal.filedownloadmanager.ui.settings.components.SettingItem
 import com.piumal.filedownloadmanager.ui.settings.components.SettingsDivider
@@ -23,15 +33,18 @@ import com.piumal.filedownloadmanager.ui.theme.FileDownloadManagerTheme
 /**
  * SettingsScreen
  *
- * Main settings screen with collapsible sections:
- * - General (always expanded)
- * - Download Settings (collapsible, default collapsed)
- * - Notification (collapsible)
- * - Advanced Settings (collapsible)
+ * Main settings screen with:
+ * - General section (always expanded)
+ * - Download Settings (navigates to detail screen)
+ * - Notification (navigates to detail screen)
+ * - Advanced Settings (navigates to detail screen)
  */
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel = viewModel()
+    viewModel: SettingsViewModel = viewModel(),
+    onNavigateToDownloadSettings: () -> Unit = {},
+    onNavigateToNotificationSettings: () -> Unit = {},
+    onNavigateToAdvancedSettings: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -39,16 +52,9 @@ fun SettingsScreen(
         uiState = uiState,
         onToggleMobileData = viewModel::toggleMobileData,
         onToggleDarkMode = viewModel::toggleDarkMode,
-        onToggleDownloadSettingsExpanded = viewModel::toggleDownloadSettingsExpanded,
-        onToggleNotificationExpanded = viewModel::toggleNotificationExpanded,
-        onToggleAdvancedSettingsExpanded = viewModel::toggleAdvancedSettingsExpanded,
-        onToggleFixedDefaultFolder = viewModel::toggleFixedDefaultFolder,
-        onToggleAutoFetchUrl = viewModel::toggleAutoFetchUrl,
-        onToggleAskDownloadFolder = viewModel::toggleAskDownloadFolder,
-        onToggleDownloadWifiOnly = viewModel::toggleDownloadWifiOnly,
-        onToggleAutoRemoveCompleted = viewModel::toggleAutoRemoveCompleted,
-        onToggleAutoRetryFailed = viewModel::toggleAutoRetryFailed,
-        onToggleNotifications = viewModel::toggleNotifications
+        onNavigateToDownloadSettings = onNavigateToDownloadSettings,
+        onNavigateToNotificationSettings = onNavigateToNotificationSettings,
+        onNavigateToAdvancedSettings = onNavigateToAdvancedSettings
     )
 }
 
@@ -63,16 +69,9 @@ fun SettingsContent(
     uiState: SettingsUiState,
     onToggleMobileData: () -> Unit,
     onToggleDarkMode: () -> Unit,
-    onToggleDownloadSettingsExpanded: () -> Unit,
-    onToggleNotificationExpanded: () -> Unit,
-    onToggleAdvancedSettingsExpanded: () -> Unit,
-    onToggleFixedDefaultFolder: () -> Unit,
-    onToggleAutoFetchUrl: () -> Unit,
-    onToggleAskDownloadFolder: () -> Unit,
-    onToggleDownloadWifiOnly: () -> Unit,
-    onToggleAutoRemoveCompleted: () -> Unit,
-    onToggleAutoRetryFailed: () -> Unit,
-    onToggleNotifications: () -> Unit,
+    onNavigateToDownloadSettings: () -> Unit,
+    onNavigateToNotificationSettings: () -> Unit,
+    onNavigateToAdvancedSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -105,100 +104,63 @@ fun SettingsContent(
 
         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
 
-        // Download Settings Section (collapsible, default collapsed)
-        CollapsibleSection(
+        // Download Settings - Navigable Section
+        SettingsSectionHeader(
             title = "Download Settings",
-            isExpanded = uiState.isDownloadSettingsExpanded,
-            onToggle = onToggleDownloadSettingsExpanded
-        ) {
-            SettingItem(
-                title = "Default download folder",
-                subtitle = uiState.defaultDownloadFolder,
-                hasChevron = true,
-                onClick = { /* Open folder picker */ }
-            )
-            SettingsDivider()
-            SettingItem(
-                title = "Fixed default download folder",
-                hasSwitch = true,
-                isEnabled = uiState.fixedDefaultDownloadFolder,
-                onToggle = onToggleFixedDefaultFolder
-            )
-            SettingsDivider()
-            SettingItem(
-                title = "Auto fetch URL",
-                hasSwitch = true,
-                isEnabled = uiState.autoFetchUrl,
-                onToggle = onToggleAutoFetchUrl
-            )
-            SettingsDivider()
-            SettingItem(
-                title = "Ask download folder",
-                hasSwitch = true,
-                isEnabled = uiState.askDownloadFolder,
-                onToggle = onToggleAskDownloadFolder
-            )
-            SettingsDivider()
-            SettingItem(
-                title = "Parallel file download",
-                subtitle = "${uiState.parallelFileDownload} files",
-                hasChevron = true,
-                onClick = { /* Open parallel download picker */ }
-            )
-            SettingsDivider()
-            SettingItem(
-                title = "Download WiFi only",
-                hasSwitch = true,
-                isEnabled = uiState.downloadWifiOnly,
-                onToggle = onToggleDownloadWifiOnly
-            )
-            SettingsDivider()
-            SettingItem(
-                title = "Automatically remove completed download from list",
-                hasSwitch = true,
-                isEnabled = uiState.autoRemoveCompleted,
-                onToggle = onToggleAutoRemoveCompleted
-            )
-            SettingsDivider()
-            SettingItem(
-                title = "Automatically retry failed download",
-                hasSwitch = true,
-                isEnabled = uiState.autoRetryFailed,
-                onToggle = onToggleAutoRetryFailed
-            )
-        }
+            onClick = onNavigateToDownloadSettings
+        )
 
         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
 
-        // Notification Section (collapsible)
-        CollapsibleSection(
+        // Notification - Navigable Section
+        SettingsSectionHeader(
             title = "Notification",
-            isExpanded = uiState.isNotificationExpanded,
-            onToggle = onToggleNotificationExpanded
-        ) {
-            SettingItem(
-                title = "Enable notifications",
-                hasSwitch = true,
-                isEnabled = uiState.notificationsEnabled,
-                onToggle = onToggleNotifications
-            )
-        }
+            onClick = onNavigateToNotificationSettings
+        )
 
         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
 
-        // Advanced Settings Section (collapsible)
-        CollapsibleSection(
+        // Advanced Settings - Navigable Section
+        SettingsSectionHeader(
             title = "Advanced Settings",
-            isExpanded = uiState.isAdvancedSettingsExpanded,
-            onToggle = onToggleAdvancedSettingsExpanded
-        ) {
-            SettingItem(
-                title = "Max retry count",
-                subtitle = "${uiState.maxRetryCount} times",
-                hasChevron = true,
-                onClick = { /* Open retry count picker */ }
-            )
-        }
+            onClick = onNavigateToAdvancedSettings
+        )
+    }
+}
+
+/**
+ * SettingsSectionHeader
+ *
+ * A clickable section header with chevron_right icon that navigates to a detail screen.
+ *
+ * @param title Section title text
+ * @param onClick Callback when the section is clicked
+ */
+@Composable
+fun SettingsSectionHeader(
+    title: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            painter = painterResource(id = R.drawable.chevron_right_24px),
+            contentDescription = "Go to $title",
+            tint = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.size(24.dp)
+        )
     }
 }
 
@@ -207,21 +169,12 @@ fun SettingsContent(
 fun SettingsScreenPreview() {
     FileDownloadManagerTheme {
         SettingsContent(
-            uiState = SettingsUiState(
-                isDownloadSettingsExpanded = true
-            ),
+            uiState = SettingsUiState(),
             onToggleMobileData = {},
             onToggleDarkMode = {},
-            onToggleDownloadSettingsExpanded = {},
-            onToggleNotificationExpanded = {},
-            onToggleAdvancedSettingsExpanded = {},
-            onToggleFixedDefaultFolder = {},
-            onToggleAutoFetchUrl = {},
-            onToggleAskDownloadFolder = {},
-            onToggleDownloadWifiOnly = {},
-            onToggleAutoRemoveCompleted = {},
-            onToggleAutoRetryFailed = {},
-            onToggleNotifications = {}
+            onNavigateToDownloadSettings = {},
+            onNavigateToNotificationSettings = {},
+            onNavigateToAdvancedSettings = {}
         )
     }
 }
@@ -232,21 +185,13 @@ fun SettingsScreenDarkPreview() {
     FileDownloadManagerTheme {
         SettingsContent(
             uiState = SettingsUiState(
-                darkMode = true,
-                isDownloadSettingsExpanded = true
+                darkMode = true
             ),
             onToggleMobileData = {},
             onToggleDarkMode = {},
-            onToggleDownloadSettingsExpanded = {},
-            onToggleNotificationExpanded = {},
-            onToggleAdvancedSettingsExpanded = {},
-            onToggleFixedDefaultFolder = {},
-            onToggleAutoFetchUrl = {},
-            onToggleAskDownloadFolder = {},
-            onToggleDownloadWifiOnly = {},
-            onToggleAutoRemoveCompleted = {},
-            onToggleAutoRetryFailed = {},
-            onToggleNotifications = {}
+            onNavigateToDownloadSettings = {},
+            onNavigateToNotificationSettings = {},
+            onNavigateToAdvancedSettings = {}
         )
     }
 }
