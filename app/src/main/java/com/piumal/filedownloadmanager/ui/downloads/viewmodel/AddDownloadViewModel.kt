@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.piumal.filedownloadmanager.domain.model.DownloadConfig
 import com.piumal.filedownloadmanager.domain.usecase.ExtractFileNameUseCase
 import com.piumal.filedownloadmanager.domain.usecase.GetClipboardUrlUseCase
+import com.piumal.filedownloadmanager.domain.usecase.IsAutoFetchUrlEnabledUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,10 +16,16 @@ import kotlinx.coroutines.launch
  * ViewModel for AddDownloadDialog
  * Manages state and business logic for the download dialog
  * Follows MVVM architecture pattern
+ *
+ * Features:
+ * - Auto-fetch URL from clipboard (only when setting is enabled)
+ * - Extract file name from URL
+ * - Schedule download for later
  */
 class AddDownloadViewModel(
     private val getClipboardUrlUseCase: GetClipboardUrlUseCase,
     private val extractFileNameUseCase: ExtractFileNameUseCase,
+    private val isAutoFetchUrlEnabledUseCase: IsAutoFetchUrlEnabledUseCase,
     private val defaultDownloadPath: String = "/storage/emulated/0/Download/FileDownloadManager"
 ) : ViewModel() {
 
@@ -27,19 +34,25 @@ class AddDownloadViewModel(
     val uiState: StateFlow<AddDownloadUiState> = _uiState.asStateFlow()
 
     /**
-     * Initialize dialog - load clipboard URL if available
+     * Initialize dialog - load clipboard URL only if auto-fetch URL setting is enabled
      */
     fun initialize() {
         viewModelScope.launch {
-            val clipboardUrl = getClipboardUrlUseCase()
-            if (clipboardUrl != null) {
-                _uiState.update { currentState ->
-                    currentState.copy(
-                        url = clipboardUrl,
-                        fileName = extractFileNameUseCase(clipboardUrl)
-                    )
+            // Only fetch clipboard URL if the setting is enabled
+            val isAutoFetchEnabled = isAutoFetchUrlEnabledUseCase()
+
+            if (isAutoFetchEnabled) {
+                val clipboardUrl = getClipboardUrlUseCase()
+                if (clipboardUrl != null) {
+                    _uiState.update { currentState ->
+                        currentState.copy(
+                            url = clipboardUrl,
+                            fileName = extractFileNameUseCase(clipboardUrl)
+                        )
+                    }
                 }
             }
+            // If auto-fetch is disabled, URL field remains empty
         }
     }
 

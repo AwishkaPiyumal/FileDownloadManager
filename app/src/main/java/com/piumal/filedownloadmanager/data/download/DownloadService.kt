@@ -46,6 +46,9 @@ class DownloadService : Service() {
     @Inject
     lateinit var downloadDao: DownloadDao
 
+    @Inject
+    lateinit var downloadQueueManager: com.piumal.filedownloadmanager.domain.manager.DownloadQueueManager
+
     // Coroutine scope for service
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -269,16 +272,26 @@ class DownloadService : Service() {
 
     /**
      * Start a download
+     * Respects parallel download limit via DownloadQueueManager
      */
     private fun startDownload(downloadId: String) {
         Log.d(TAG, "=== startDownload called with ID: $downloadId ===")
-
 
         // Cancel if already running
         activeDownloads[downloadId]?.cancel()
 
         val job = serviceScope.launch {
             try {
+                // Check if we can start this download (parallel limit check)
+                val canStart = downloadQueueManager.tryStartDownload(downloadId)
+                if (!canStart) {
+                    Log.d(TAG, "Download $downloadId queued - parallel limit reached")
+                    // Download is queued, will be started automatically when a slot opens
+                    activeDownloads.remove(downloadId)
+                    checkAndStopService()
+                    return@launch
+                }
+
                 Log.d(TAG, "Querying database for download ID: $downloadId")
                 // Get download item from database
                 val downloadEntity = downloadDao.getDownloadById(downloadId)
@@ -291,6 +304,7 @@ class DownloadService : Service() {
                     val retryEntity = downloadDao.getDownloadById(downloadId)
                     if (retryEntity == null) {
                         Log.e(TAG, "Download still not found after retry: $downloadId")
+                        downloadQueueManager.onDownloadComplete(downloadId)
                         activeDownloads.remove(downloadId)
                         checkAndStopService()
                         return@launch
@@ -387,6 +401,8 @@ class DownloadService : Service() {
                                     fileName = downloadItem.fileName,
                                     filePath = downloadItem.filePath
                                 )
+                                // Notify queue manager to start next download
+                                downloadQueueManager.onDownloadComplete(downloadId)
                                 activeDownloads.remove(downloadId)
                             }
                             DownloadStatus.FAILED -> {
@@ -396,6 +412,8 @@ class DownloadService : Service() {
                                     fileName = downloadItem.fileName,
                                     errorMessage = progress.error
                                 )
+                                // Notify queue manager to start next download
+                                downloadQueueManager.onDownloadComplete(downloadId)
                                 activeDownloads.remove(downloadId)
                             }
                             else -> {}
@@ -408,6 +426,8 @@ class DownloadService : Service() {
                     status = DownloadStatus.FAILED.name,
                     updatedAt = System.currentTimeMillis()
                 )
+                // Notify queue manager to start next download
+                downloadQueueManager.onDownloadComplete(downloadId)
                 activeDownloads.remove(downloadId)
             } finally {
                 checkAndStopService()
@@ -429,9 +449,12 @@ class DownloadService : Service() {
         activeDownloads.remove(downloadId)
         Log.d(TAG, "Download job cancelled immediately")
 
-        // STEP 2: Update notification and database
+        // STEP 2: Update notification and database, and notify queue manager
         serviceScope.launch {
             try {
+                // Notify queue manager that this download is paused (frees up a slot)
+                downloadQueueManager.onDownloadPaused(downloadId)
+
                 // Get download info for notification
                 val downloadEntity = downloadDao.getDownloadById(downloadId)
                 if (downloadEntity != null) {
@@ -489,6 +512,8 @@ class DownloadService : Service() {
                 status = DownloadStatus.FAILED.name,
                 updatedAt = System.currentTimeMillis()
             )
+            // Notify queue manager to start next download
+            downloadQueueManager.onDownloadComplete(downloadId)
         }
 
         // Cancel notification

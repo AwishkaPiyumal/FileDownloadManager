@@ -20,6 +20,7 @@ import com.piumal.filedownloadmanager.R
 import com.piumal.filedownloadmanager.domain.model.DownloadConfig
 import com.piumal.filedownloadmanager.domain.usecase.ExtractFileNameUseCase
 import com.piumal.filedownloadmanager.domain.usecase.GetClipboardUrlUseCase
+import com.piumal.filedownloadmanager.domain.usecase.IsAutoFetchUrlEnabledUseCase
 import com.piumal.filedownloadmanager.ui.downloads.viewmodel.AddDownloadViewModel
 
 
@@ -273,11 +274,13 @@ private fun createAddDownloadViewModel(): AddDownloadViewModel {
     val context = LocalContext.current
     val getClipboardUrlUseCase = remember { GetClipboardUrlUseCase(context) }
     val extractFileNameUseCase = remember { ExtractFileNameUseCase() }
+    val isAutoFetchUrlEnabledUseCase = remember { IsAutoFetchUrlEnabledUseCase(context) }
 
     return viewModel {
         AddDownloadViewModel(
             getClipboardUrlUseCase = getClipboardUrlUseCase,
-            extractFileNameUseCase = extractFileNameUseCase
+            extractFileNameUseCase = extractFileNameUseCase,
+            isAutoFetchUrlEnabledUseCase = isAutoFetchUrlEnabledUseCase
         )
     }
 }
