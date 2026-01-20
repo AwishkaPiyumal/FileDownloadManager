@@ -24,7 +24,7 @@ fun SettingsDivider(
         modifier = modifier
             .fillMaxWidth()
             .padding(start = 16.dp),
-        thickness = 1.dp,
+        thickness = 1.5.dp,
         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
     )
 }

@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -50,7 +49,7 @@ fun SettingsScreen(
 
     SettingsContent(
         uiState = uiState,
-        onToggleMobileData = viewModel::toggleMobileData,
+        onToggleMobileNetwork = viewModel::toggleMobileNetwork,
         onToggleDarkMode = viewModel::toggleDarkMode,
         onNavigateToDownloadSettings = onNavigateToDownloadSettings,
         onNavigateToNotificationSettings = onNavigateToNotificationSettings,
@@ -67,7 +66,7 @@ fun SettingsScreen(
 @Composable
 fun SettingsContent(
     uiState: SettingsUiState,
-    onToggleMobileData: () -> Unit,
+    onToggleMobileNetwork: () -> Unit,
     onToggleDarkMode: () -> Unit,
     onNavigateToDownloadSettings: () -> Unit,
     onNavigateToNotificationSettings: () -> Unit,
@@ -88,10 +87,10 @@ fun SettingsContent(
             isCollapsible = false
         ) {
             SettingItem(
-                title = "Use mobile data",
+                title = "Use mobile network",
                 hasSwitch = true,
-                isEnabled = uiState.useMobileData,
-                onToggle = onToggleMobileData
+                isEnabled = uiState.useMobileNetwork,
+                onToggle = onToggleMobileNetwork
             )
             SettingsDivider()
             SettingItem(
@@ -102,7 +101,7 @@ fun SettingsContent(
             )
         }
 
-        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+        SettingsDivider()
 
         // Download Settings - Navigable Section
         SettingsSectionHeader(
@@ -110,7 +109,7 @@ fun SettingsContent(
             onClick = onNavigateToDownloadSettings
         )
 
-        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+        SettingsDivider()
 
         // Notification - Navigable Section
         SettingsSectionHeader(
@@ -118,7 +117,7 @@ fun SettingsContent(
             onClick = onNavigateToNotificationSettings
         )
 
-        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+        SettingsDivider()
 
         // Advanced Settings - Navigable Section
         SettingsSectionHeader(
@@ -170,7 +169,7 @@ fun SettingsScreenPreview() {
     FileDownloadManagerTheme {
         SettingsContent(
             uiState = SettingsUiState(),
-            onToggleMobileData = {},
+            onToggleMobileNetwork = {},
             onToggleDarkMode = {},
             onNavigateToDownloadSettings = {},
             onNavigateToNotificationSettings = {},
@@ -187,7 +186,7 @@ fun SettingsScreenDarkPreview() {
             uiState = SettingsUiState(
                 darkMode = true
             ),
-            onToggleMobileData = {},
+            onToggleMobileNetwork = {},
             onToggleDarkMode = {},
             onNavigateToDownloadSettings = {},
             onNavigateToNotificationSettings = {},

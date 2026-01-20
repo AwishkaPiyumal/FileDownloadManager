@@ -36,13 +36,11 @@ import com.piumal.filedownloadmanager.ui.theme.FileDownloadManagerTheme
  *
  * Settings order:
  * 1. Default download folder
- * 2. Fixed default download folder
- * 3. Ask download folder
- * 4. Auto fetch URL
- * 5. Parallel file download
- * 6. Download WiFi only
- * 7. Automatically remove completed
- * 8. Automatically retry failed
+ * 2. Ask download folder
+ * 3. Auto fetch URL
+ * 4. Parallel file download
+ * 5. Automatically remove completed
+ * 6. Automatically retry failed
  */
 @Composable
 fun DownloadSettingsScreen(
@@ -71,7 +69,6 @@ fun DownloadSettingsScreen(
         uiState = uiState,
         onToggleAutoFetchUrl = viewModel::toggleAutoFetchUrl,
         onToggleAskDownloadFolder = viewModel::toggleAskDownloadFolder,
-        onToggleDownloadWifiOnly = viewModel::toggleDownloadWifiOnly,
         onToggleAutoRemoveCompleted = viewModel::toggleAutoRemoveCompleted,
         onToggleAutoRetryFailed = viewModel::toggleAutoRetryFailed,
         onShowFolderPickerDialog = viewModel::showFolderPickerDialog,
@@ -110,7 +107,6 @@ fun DownloadSettingsContent(
     uiState: SettingsUiState,
     onToggleAutoFetchUrl: () -> Unit,
     onToggleAskDownloadFolder: () -> Unit,
-    onToggleDownloadWifiOnly: () -> Unit,
     onToggleAutoRemoveCompleted: () -> Unit,
     onToggleAutoRetryFailed: () -> Unit,
     onShowFolderPickerDialog: () -> Unit,
@@ -183,16 +179,7 @@ fun DownloadSettingsContent(
         )
         SettingsDivider()
 
-        // 5. Download WiFi only
-        SettingItem(
-            title = "Download WiFi only",
-            hasSwitch = true,
-            isEnabled = uiState.downloadWifiOnly,
-            onToggle = onToggleDownloadWifiOnly
-        )
-        SettingsDivider()
-
-        // 6. Automatically remove completed download from list
+        // 5. Automatically remove completed download from list
         SettingItem(
             title = "Automatically remove completed download from list",
             hasSwitch = true,
@@ -201,7 +188,7 @@ fun DownloadSettingsContent(
         )
         SettingsDivider()
 
-        // 7. Automatically retry failed download
+        // 6. Automatically retry failed download
         SettingItem(
             title = "Automatically retry failed download",
             hasSwitch = true,
@@ -219,7 +206,6 @@ fun DownloadSettingsScreenPreview() {
             uiState = SettingsUiState(),
             onToggleAutoFetchUrl = {},
             onToggleAskDownloadFolder = {},
-            onToggleDownloadWifiOnly = {},
             onToggleAutoRemoveCompleted = {},
             onToggleAutoRetryFailed = {},
             onShowFolderPickerDialog = {},
@@ -241,7 +227,6 @@ fun DownloadSettingsScreenDarkPreview() {
             uiState = SettingsUiState(darkMode = true),
             onToggleAutoFetchUrl = {},
             onToggleAskDownloadFolder = {},
-            onToggleDownloadWifiOnly = {},
             onToggleAutoRemoveCompleted = {},
             onToggleAutoRetryFailed = {},
             onShowFolderPickerDialog = {},
@@ -254,4 +239,3 @@ fun DownloadSettingsScreenDarkPreview() {
         )
     }
 }
-

@@ -1,5 +1,10 @@
 package com.piumal.filedownloadmanager.ui.downloads.components
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.DocumentsContract
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +26,7 @@ import com.piumal.filedownloadmanager.domain.model.DownloadConfig
 import com.piumal.filedownloadmanager.domain.usecase.ExtractFileNameUseCase
 import com.piumal.filedownloadmanager.domain.usecase.GetClipboardUrlUseCase
 import com.piumal.filedownloadmanager.domain.usecase.IsAutoFetchUrlEnabledUseCase
+import com.piumal.filedownloadmanager.domain.usecase.IsAskDownloadFolderEnabledUseCase
 import com.piumal.filedownloadmanager.ui.downloads.viewmodel.AddDownloadViewModel
 
 
@@ -41,6 +47,43 @@ fun AddDownloadDialog(
     viewModel: AddDownloadViewModel = createAddDownloadViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    val context = LocalContext.current
+
+    // Folder picker launcher using Storage Access Framework
+    val folderPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        uri?.let {
+            // Take persistable permission
+            val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            context.contentResolver.takePersistableUriPermission(uri, takeFlags)
+
+            // Convert URI to readable path
+            val folderPath = runCatching {
+                val docId = DocumentsContract.getTreeDocumentId(uri)
+                val split = docId.split(":")
+                if (split.size >= 2) {
+                    if (split[0] == "primary") {
+                        "${'$'}{android.os.Environment.getExternalStorageDirectory().absolutePath}/${'$'}{split[1]}"
+                    } else {
+                        "/storage/${'$'}{split[0]}/${'$'}{split[1]}"
+                    }
+                } else {
+                    uri.path ?: "Download/FileDownloadManager"
+                }
+            }.getOrDefault("Download/FileDownloadManager")
+
+            viewModel.onFilePathChanged(folderPath)
+
+            // After user selected folder, proceed with download
+            if (viewModel.isValid()) {
+                onDownload(viewModel.getDownloadConfig())
+                viewModel.reset()
+            }
+        }
+    }
 
     // Local state for validation errors
     var validationError by remember { mutableStateOf<String?>(null) }
@@ -124,7 +167,9 @@ fun AddDownloadDialog(
                     ),
                     trailingIcon = {
                         IconButton(onClick = {
-                            // TODO: Open folder picker to select save location
+                            // Open folder picker to select save location
+                            val initialUri = Uri.parse("content://com.android.externalstorage.documents/document/primary:Download")
+                            folderPickerLauncher.launch(initialUri)
                         }) {
                             Icon(
                                 painter = painterResource(id = R.drawable.folder_24px),
@@ -178,7 +223,7 @@ fun AddDownloadDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "📅 ${formatDateTime(uiState.scheduleTime!!)}",
+                            text = "📅 ${'$'}{formatDateTime(uiState.scheduleTime!!)}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.weight(1f)
@@ -219,9 +264,18 @@ fun AddDownloadDialog(
                                 // Show warning as error message (no dialog)
                                 validationError = validation.warningMessage
                             } else {
-                                // Proceed with download
-                                onDownload(viewModel.getDownloadConfig())
-                                viewModel.reset()
+                                // Check ask-download-folder setting
+                                val isAsk = IsAskDownloadFolderEnabledUseCase(context)()
+
+                                if (isAsk) {
+                                    // Launch folder picker to get destination path, download continues in launcher callback
+                                    val initialUri = Uri.parse("content://com.android.externalstorage.documents/document/primary:Download")
+                                    folderPickerLauncher.launch(initialUri)
+                                } else {
+                                    // Proceed with download immediately
+                                    onDownload(viewModel.getDownloadConfig())
+                                    viewModel.reset()
+                                }
                             }
                         }
                     },
@@ -284,5 +338,3 @@ private fun createAddDownloadViewModel(): AddDownloadViewModel {
         )
     }
 }
-
-

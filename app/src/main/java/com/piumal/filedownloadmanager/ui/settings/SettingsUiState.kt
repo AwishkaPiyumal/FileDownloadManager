@@ -17,7 +17,7 @@ data class SettingsUiState(
     val showParallelDownloadDialog: Boolean = false,
 
     // General settings
-    val useMobileData: Boolean = false,
+    val useMobileNetwork: Boolean = false,
     val darkMode: Boolean = false,
 
     // Download settings
@@ -25,7 +25,6 @@ data class SettingsUiState(
     val autoFetchUrl: Boolean = true,
     val askDownloadFolder: Boolean = false,
     val parallelFileDownload: Int = 3,
-    val downloadWifiOnly: Boolean = false,
     val autoRemoveCompleted: Boolean = false,
     val autoRetryFailed: Boolean = true,
 
