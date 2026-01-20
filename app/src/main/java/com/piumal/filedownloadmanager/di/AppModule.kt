@@ -55,5 +55,13 @@ object AppModule {
     ): DownloadRepository {
         return DownloadRepositoryImpl(context, downloadDao, downloadManager)
     }
-}
 
+    // Provide SettingsRepository implementation
+    @Provides
+    @Singleton
+    fun provideSettingsRepository(
+        @ApplicationContext context: Context
+    ): com.piumal.filedownloadmanager.domain.repository.SettingsRepository {
+        return com.piumal.filedownloadmanager.data.settings.SettingsRepositoryImpl(context)
+    }
+}
