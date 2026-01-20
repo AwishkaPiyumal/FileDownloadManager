@@ -21,14 +21,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     companion object {
         private const val PREFS_NAME = "settings_prefs"
         // General
-        private const val KEY_USE_MOBILE_DATA = "use_mobile_data"
+        private const val KEY_USE_MOBILE_NETWORK = "use_mobile_network"
         private const val KEY_DARK_MODE = "dark_mode"
         // Download Settings
         private const val KEY_DEFAULT_DOWNLOAD_FOLDER = "default_download_folder"
         private const val KEY_AUTO_FETCH_URL = "auto_fetch_url"
         private const val KEY_ASK_DOWNLOAD_FOLDER = "ask_download_folder"
         private const val KEY_PARALLEL_DOWNLOAD = "parallel_download"
-        private const val KEY_DOWNLOAD_WIFI_ONLY = "download_wifi_only"
         private const val KEY_AUTO_REMOVE_COMPLETED = "auto_remove_completed"
         private const val KEY_AUTO_RETRY_FAILED = "auto_retry_failed"
         // Notification
@@ -51,14 +50,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             _uiState.update { currentState ->
                 currentState.copy(
                     // General
-                    useMobileData = sharedPreferences.getBoolean(KEY_USE_MOBILE_DATA, false),
+                    useMobileNetwork = sharedPreferences.getBoolean(KEY_USE_MOBILE_NETWORK, false),
                     darkMode = sharedPreferences.getBoolean(KEY_DARK_MODE, false),
                     // Download Settings
                     defaultDownloadFolder = sharedPreferences.getString(KEY_DEFAULT_DOWNLOAD_FOLDER, "Download/FileDownloadManager") ?: "Download/FileDownloadManager",
                     autoFetchUrl = sharedPreferences.getBoolean(KEY_AUTO_FETCH_URL, true),
                     askDownloadFolder = sharedPreferences.getBoolean(KEY_ASK_DOWNLOAD_FOLDER, false),
                     parallelFileDownload = sharedPreferences.getInt(KEY_PARALLEL_DOWNLOAD, 3),
-                    downloadWifiOnly = sharedPreferences.getBoolean(KEY_DOWNLOAD_WIFI_ONLY, false),
                     autoRemoveCompleted = sharedPreferences.getBoolean(KEY_AUTO_REMOVE_COMPLETED, false),
                     autoRetryFailed = sharedPreferences.getBoolean(KEY_AUTO_RETRY_FAILED, true),
                     // Notification
@@ -107,10 +105,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     // General settings
-    fun toggleMobileData() {
-        val newValue = !_uiState.value.useMobileData
-        _uiState.update { it.copy(useMobileData = newValue) }
-        saveBoolean(KEY_USE_MOBILE_DATA, newValue)
+    fun toggleMobileNetwork() {
+        val newValue = !_uiState.value.useMobileNetwork
+        _uiState.update { it.copy(useMobileNetwork = newValue) }
+        saveBoolean(KEY_USE_MOBILE_NETWORK, newValue)
     }
 
     fun toggleDarkMode() {
@@ -133,11 +131,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         saveBoolean(KEY_ASK_DOWNLOAD_FOLDER, newValue)
     }
 
-    fun toggleDownloadWifiOnly() {
-        val newValue = !_uiState.value.downloadWifiOnly
-        _uiState.update { it.copy(downloadWifiOnly = newValue) }
-        saveBoolean(KEY_DOWNLOAD_WIFI_ONLY, newValue)
-    }
 
     fun toggleAutoRemoveCompleted() {
         val newValue = !_uiState.value.autoRemoveCompleted
@@ -187,4 +180,3 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 }
-
