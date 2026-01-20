@@ -10,14 +10,19 @@ import com.piumal.filedownloadmanager.domain.usecase.DeleteSelectedDownloadsUseC
 import com.piumal.filedownloadmanager.domain.usecase.DownloadFilterType
 import com.piumal.filedownloadmanager.domain.usecase.FilterDownloadsUseCase
 import com.piumal.filedownloadmanager.domain.usecase.ObserveAutoRemoveCompletedUseCase
+import com.piumal.filedownloadmanager.domain.usecase.ObserveAutoRetryFailedUseCase
+import com.piumal.filedownloadmanager.domain.usecase.ObserveHiddenCompletedIdsUseCase
+import com.piumal.filedownloadmanager.domain.usecase.AddHiddenCompletedIdsUseCase
 import com.piumal.filedownloadmanager.domain.usecase.SortDownloadsUseCase
 import com.piumal.filedownloadmanager.domain.usecase.StartDownloadUseCase
 import com.piumal.filedownloadmanager.ui.downloads.components.SortOption
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -37,7 +42,10 @@ class DownloadScreenViewModel @Inject constructor(
     private val startDownloadUseCase: StartDownloadUseCase,
     private val deleteSelectedDownloadsUseCase: DeleteSelectedDownloadsUseCase,
     private val downloadRepository: DownloadRepository,
-    private val observeAutoRemoveCompletedUseCase: ObserveAutoRemoveCompletedUseCase
+    private val observeAutoRemoveCompletedUseCase: ObserveAutoRemoveCompletedUseCase,
+    private val observeAutoRetryFailedUseCase: ObserveAutoRetryFailedUseCase,
+    private val observeHiddenCompletedIdsUseCase: ObserveHiddenCompletedIdsUseCase,
+    private val addHiddenCompletedIdsUseCase: AddHiddenCompletedIdsUseCase
 ) : ViewModel() {
 
     // Private mutable state
@@ -45,6 +53,15 @@ class DownloadScreenViewModel @Inject constructor(
 
     // Tracks whether completed downloads should be hidden
     private var hideCompleted: Boolean = false
+
+    // Tracks whether auto-retry is enabled
+    private var autoRetryEnabled: Boolean = false
+
+    // Track which failed IDs have already been retried to avoid loops
+    private val retriedFailedIds = mutableSetOf<String>()
+
+    // Tracks set of hidden completed ids
+    private var hiddenCompletedIds: Set<String> = emptySet()
 
     // Public immutable state for UI observation
     val uiState: StateFlow<DownloadScreenUiState> = _uiState.asStateFlow()
@@ -55,7 +72,10 @@ class DownloadScreenViewModel @Inject constructor(
     init {
         Log.d("DownloadScreenVM", "ViewModel init started")
         try {
+            // Observe hidden IDs first so we have persisted set available
+            observeHiddenCompletedIds()
             observeAutoRemoveSetting()
+            observeAutoRetrySetting()
             observeDownloads()
             Log.d("DownloadScreenVM", "ViewModel init completed successfully")
         } catch (e: Exception) {
@@ -70,22 +90,97 @@ class DownloadScreenViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 observeAutoRemoveCompletedUseCase().collect { value ->
+                    // Update local flag
                     hideCompleted = value
-                    // Recompute displayedDownloads using current allDownloads
-                    _uiState.update { currentState ->
-                        currentState.copy(
-                            displayedDownloads = applyAutoRemoveFilter(
-                                getFilteredAndSortedDownloads(
-                                    allDownloads = currentState.allDownloads,
-                                    filterType = currentState.selectedFilter,
-                                    sortOption = currentState.selectedSortOption
-                                )
+
+                    if (value) {
+                        // Persist and locally track currently completed downloads immediately so UI updates without waiting
+                        // Get the current downloads snapshot directly from repository (avoids waiting for UI state to refresh)
+                        val currentAll = try {
+                            downloadRepository.getAllDownloads().first()
+                        } catch (e: Exception) {
+                            Log.e("DownloadScreenVM", "Failed to get snapshot of downloads", e)
+                            _uiState.value.allDownloads
+                        }
+                        val toHideNow = currentAll.filter { it.isCompleted() && !hiddenCompletedIds.contains(it.id) }.map { it.id }.toSet()
+                        if (toHideNow.isNotEmpty()) {
+                            try {
+                                addHiddenCompletedIdsUseCase(toHideNow)
+                                // update local set immediately to avoid waiting for prefs listener
+                                hiddenCompletedIds = hiddenCompletedIds + toHideNow
+                                Log.d("DownloadScreenVM", "Persisted hidden IDs on toggle: $toHideNow. Hidden now total=${hiddenCompletedIds.size}")
+                            } catch (e: Exception) {
+                                Log.e("DownloadScreenVM", "Failed to persist hidden completed ids on toggle", e)
+                            }
+                        }
+
+                        // Update UI state immediately using the repository snapshot so UI reflects changes without waiting
+                        val snapshotFilteredAndSorted = getFilteredAndSortedDownloads(
+                            allDownloads = currentAll,
+                            filterType = _uiState.value.selectedFilter,
+                            sortOption = _uiState.value.selectedSortOption
+                        )
+                        _uiState.update { currentState ->
+                            currentState.copy(
+                                allDownloads = currentAll,
+                                displayedDownloads = applyAutoRemoveFilter(snapshotFilteredAndSorted),
+                                isLoading = false
                             )
+                        }
+
+                        }
+
+                    // If not handled above (toggle off) recompute displayed using current UI state's allDownloads
+                    if (!value) {
+                        // Do not un-hide previously hidden items when the user toggles the setting off.
+                        // We intentionally avoid modifying displayedDownloads here so hidden items remain hidden.
+                        Log.d("DownloadScreenVM", "Auto-remove toggled OFF; preserving previously hidden completed items (count=${hiddenCompletedIds.size})")
+                    }
+
+                 }
+             } catch (e: Exception) {
+                 Log.e("DownloadScreenVM", "Error observing auto-remove setting", e)
+             }
+         }
+     }
+
+    /**
+     * Observe changes to the "Automatically retry failed downloads" setting
+     */
+    private fun observeAutoRetrySetting() {
+        viewModelScope.launch {
+            try {
+                observeAutoRetryFailedUseCase().collect { value ->
+                    autoRetryEnabled = value
+                }
+            } catch (e: Exception) {
+                Log.e("DownloadScreenVM", "Error observing auto-retry setting", e)
+            }
+        }
+    }
+
+    /**
+     * Observe changes to the hidden completed IDs
+     */
+    private fun observeHiddenCompletedIds() {
+        viewModelScope.launch {
+            try {
+                observeHiddenCompletedIdsUseCase().collect { ids ->
+                    hiddenCompletedIds = ids
+                    // recompute displayed with new hidden set
+                    _uiState.update { currentState ->
+                        val filteredAndSorted = getFilteredAndSortedDownloads(
+                            allDownloads = currentState.allDownloads,
+                            filterType = currentState.selectedFilter,
+                            sortOption = currentState.selectedSortOption
+                        )
+                        currentState.copy(
+                            displayedDownloads = applyAutoRemoveFilter(filteredAndSorted)
                         )
                     }
                 }
             } catch (e: Exception) {
-                Log.e("DownloadScreenVM", "Error observing auto-remove setting", e)
+                Log.e("DownloadScreenVM", "Error observing hidden completed ids", e)
             }
         }
     }
@@ -96,7 +191,34 @@ class DownloadScreenViewModel @Inject constructor(
     private fun observeDownloads() {
         viewModelScope.launch {
             try {
+                var previousList: List<DownloadItem> = emptyList()
                 downloadRepository.getAllDownloads().collect { downloads ->
+                    // Detect transitions to FAILED
+                    val newlyFailed = downloads.filter { it.isFailed() }
+                        .map { it.id }
+                        .toSet() - previousList.filter { it.isFailed() }.map { it.id }.toSet()
+
+                    // Attempt retries for newly failed items if setting enabled
+                    if (autoRetryEnabled) {
+                        newlyFailed.forEach { failedId ->
+                            if (!retriedFailedIds.contains(failedId)) {
+                                try {
+                                    // call repository retry (this should schedule/start retry)
+                                    downloadRepository.retryDownload(failedId)
+                                    retriedFailedIds.add(failedId)
+                                    Log.d("DownloadScreenVM", "Auto-retry triggered for: $failedId")
+                                } catch (e: Exception) {
+                                    Log.e("DownloadScreenVM", "Failed to auto-retry download $failedId", e)
+                                }
+                            }
+                        }
+                    }
+
+                    // Clean up retried set for items that are no longer failed
+                    clearRetriedIfStateChanged(downloads)
+
+                    previousList = downloads
+
                     _uiState.update { currentState ->
                         val filteredAndSorted = getFilteredAndSortedDownloads(
                             allDownloads = downloads,
@@ -121,11 +243,21 @@ class DownloadScreenViewModel @Inject constructor(
      * Apply auto-remove completed setting to a list of downloads
      */
     private fun applyAutoRemoveFilter(items: List<com.piumal.filedownloadmanager.domain.model.DownloadItem>): List<com.piumal.filedownloadmanager.domain.model.DownloadItem> {
-        return if (hideCompleted) {
-            items.filter { !it.isCompleted() }
-        } else {
-            items
+        // First remove any items that are explicitly hidden (persisted)
+        var result = items.filter { !hiddenCompletedIds.contains(it.id) }
+        // If hideCompleted setting is on, remove currently completed items as well and persist them
+        if (hideCompleted) {
+            val toHideNow = result.filter { it.isCompleted() }.map { it.id }.toSet()
+            if (toHideNow.isNotEmpty()) {
+                try {
+                    addHiddenCompletedIdsUseCase(toHideNow)
+                } catch (e: Exception) {
+                    Log.e("DownloadScreenVM", "Failed to persist hidden completed ids", e)
+                }
+            }
+            result = result.filter { !it.isCompleted() }
         }
+        return result
     }
 
     /**
@@ -244,13 +376,14 @@ class DownloadScreenViewModel @Inject constructor(
     fun setFilterType(filterType: DownloadFilterType) {
         viewModelScope.launch {
             _uiState.update { currentState ->
+                val filteredAndSorted = getFilteredAndSortedDownloads(
+                    allDownloads = currentState.allDownloads,
+                    filterType = filterType,
+                    sortOption = currentState.selectedSortOption
+                )
                 currentState.copy(
                     selectedFilter = filterType,
-                    displayedDownloads = getFilteredAndSortedDownloads(
-                        allDownloads = currentState.allDownloads,
-                        filterType = filterType,
-                        sortOption = currentState.selectedSortOption
-                    )
+                    displayedDownloads = applyAutoRemoveFilter(filteredAndSorted)
                 )
             }
         }
@@ -263,13 +396,14 @@ class DownloadScreenViewModel @Inject constructor(
     fun setSortOption(sortOption: SortOption) {
         viewModelScope.launch {
             _uiState.update { currentState ->
+                val filteredAndSorted = getFilteredAndSortedDownloads(
+                    allDownloads = currentState.allDownloads,
+                    filterType = currentState.selectedFilter,
+                    sortOption = sortOption
+                )
                 currentState.copy(
                     selectedSortOption = sortOption,
-                    displayedDownloads = getFilteredAndSortedDownloads(
-                        allDownloads = currentState.allDownloads,
-                        filterType = currentState.selectedFilter,
-                        sortOption = sortOption
-                    )
+                    displayedDownloads = applyAutoRemoveFilter(filteredAndSorted)
                 )
             }
         }
@@ -550,6 +684,22 @@ class DownloadScreenViewModel @Inject constructor(
     }
 
     /**
+     * Helper to recompute displayed downloads from current UI state and local flags
+     */
+    private fun recomputeDisplayed() {
+        _uiState.update { currentState ->
+            val filteredAndSorted = getFilteredAndSortedDownloads(
+                allDownloads = currentState.allDownloads,
+                filterType = currentState.selectedFilter,
+                sortOption = currentState.selectedSortOption
+            )
+            currentState.copy(
+                displayedDownloads = applyAutoRemoveFilter(filteredAndSorted)
+            )
+        }
+    }
+
+    /**
      * Apply filter and sort to downloads list
      * This is the core logic that combines both operations
      */
@@ -565,6 +715,17 @@ class DownloadScreenViewModel @Inject constructor(
         val sortedDownloads = sortDownloadsUseCase(filteredDownloads, sortOption)
 
         return sortedDownloads
+    }
+
+    /**
+     * Clear retried IDs if the download state has changed from FAILED
+     * This allows items to be retried if they fail again in the future
+     */
+    private fun clearRetriedIfStateChanged(currentDownloads: List<DownloadItem>) {
+        // Compute current failed IDs and retain only those in the retried set
+        val failedIds = currentDownloads.filter { it.isFailed() }.map { it.id }.toSet()
+        retriedFailedIds.retainAll(failedIds)
+        Log.d("DownloadScreenVM", "RetriedFailedIds after cleanup: $retriedFailedIds")
     }
 }
 

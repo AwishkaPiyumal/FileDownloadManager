@@ -1,0 +1,13 @@
+package com.piumal.filedownloadmanager.domain.usecase
+
+import com.piumal.filedownloadmanager.domain.repository.SettingsRepository
+import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class ObserveHiddenCompletedIdsUseCase @Inject constructor(
+    private val settingsRepository: SettingsRepository
+) {
+    operator fun invoke(): Flow<Set<String>> = settingsRepository.observeHiddenCompletedIds()
+}
