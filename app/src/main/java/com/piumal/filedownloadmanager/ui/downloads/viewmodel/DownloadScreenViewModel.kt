@@ -9,6 +9,7 @@ import com.piumal.filedownloadmanager.domain.repository.DownloadRepository
 import com.piumal.filedownloadmanager.domain.usecase.DeleteSelectedDownloadsUseCase
 import com.piumal.filedownloadmanager.domain.usecase.DownloadFilterType
 import com.piumal.filedownloadmanager.domain.usecase.FilterDownloadsUseCase
+import com.piumal.filedownloadmanager.domain.usecase.ObserveAutoRemoveCompletedUseCase
 import com.piumal.filedownloadmanager.domain.usecase.SortDownloadsUseCase
 import com.piumal.filedownloadmanager.domain.usecase.StartDownloadUseCase
 import com.piumal.filedownloadmanager.ui.downloads.components.SortOption
@@ -16,6 +17,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -34,25 +36,57 @@ class DownloadScreenViewModel @Inject constructor(
     private val filterDownloadsUseCase: FilterDownloadsUseCase,
     private val startDownloadUseCase: StartDownloadUseCase,
     private val deleteSelectedDownloadsUseCase: DeleteSelectedDownloadsUseCase,
-    private val downloadRepository: DownloadRepository
+    private val downloadRepository: DownloadRepository,
+    private val observeAutoRemoveCompletedUseCase: ObserveAutoRemoveCompletedUseCase
 ) : ViewModel() {
 
     // Private mutable state
     private val _uiState = MutableStateFlow(DownloadScreenUiState())
 
+    // Tracks whether completed downloads should be hidden
+    private var hideCompleted: Boolean = false
+
     // Public immutable state for UI observation
     val uiState: StateFlow<DownloadScreenUiState> = _uiState.asStateFlow()
 
     /**
-     * Initialize - observe downloads from repository
+     * Initialize - observe downloads from repository and settings
      */
     init {
         Log.d("DownloadScreenVM", "ViewModel init started")
         try {
+            observeAutoRemoveSetting()
             observeDownloads()
             Log.d("DownloadScreenVM", "ViewModel init completed successfully")
         } catch (e: Exception) {
             Log.e("DownloadScreenVM", "Error during ViewModel init", e)
+        }
+    }
+
+    /**
+     * Observe changes to the "Automatically remove completed" setting
+     */
+    private fun observeAutoRemoveSetting() {
+        viewModelScope.launch {
+            try {
+                observeAutoRemoveCompletedUseCase().collect { value ->
+                    hideCompleted = value
+                    // Recompute displayedDownloads using current allDownloads
+                    _uiState.update { currentState ->
+                        currentState.copy(
+                            displayedDownloads = applyAutoRemoveFilter(
+                                getFilteredAndSortedDownloads(
+                                    allDownloads = currentState.allDownloads,
+                                    filterType = currentState.selectedFilter,
+                                    sortOption = currentState.selectedSortOption
+                                )
+                            )
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("DownloadScreenVM", "Error observing auto-remove setting", e)
+            }
         }
     }
 
@@ -64,13 +98,14 @@ class DownloadScreenViewModel @Inject constructor(
             try {
                 downloadRepository.getAllDownloads().collect { downloads ->
                     _uiState.update { currentState ->
+                        val filteredAndSorted = getFilteredAndSortedDownloads(
+                            allDownloads = downloads,
+                            filterType = currentState.selectedFilter,
+                            sortOption = currentState.selectedSortOption
+                        )
                         currentState.copy(
                             allDownloads = downloads,
-                            displayedDownloads = getFilteredAndSortedDownloads(
-                                allDownloads = downloads,
-                                filterType = currentState.selectedFilter,
-                                sortOption = currentState.selectedSortOption
-                            ),
+                            displayedDownloads = applyAutoRemoveFilter(filteredAndSorted),
                             isLoading = false
                         )
                     }
@@ -79,6 +114,17 @@ class DownloadScreenViewModel @Inject constructor(
                 Log.e("DownloadScreenVM", "Error observing downloads", e)
                 _uiState.update { it.copy(isLoading = false, downloadError = "Failed to load downloads") }
             }
+        }
+    }
+
+    /**
+     * Apply auto-remove completed setting to a list of downloads
+     */
+    private fun applyAutoRemoveFilter(items: List<com.piumal.filedownloadmanager.domain.model.DownloadItem>): List<com.piumal.filedownloadmanager.domain.model.DownloadItem> {
+        return if (hideCompleted) {
+            items.filter { !it.isCompleted() }
+        } else {
+            items
         }
     }
 
@@ -556,4 +602,3 @@ data class DownloadScreenUiState(
      */
     fun isSelected(downloadId: String): Boolean = selectedDownloadIds.contains(downloadId)
 }
-
