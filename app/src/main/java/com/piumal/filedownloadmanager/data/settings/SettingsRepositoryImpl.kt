@@ -22,6 +22,8 @@ class SettingsRepositoryImpl @Inject constructor(
     companion object {
         private const val PREFS_NAME = "settings_prefs"
         private const val KEY_AUTO_REMOVE_COMPLETED = "auto_remove_completed"
+        private const val KEY_AUTO_RETRY_FAILED = "auto_retry_failed"
+        private const val KEY_HIDDEN_COMPLETED_IDS = "hidden_completed_ids"
         private const val DEFAULT_VALUE = false
     }
 
@@ -30,9 +32,26 @@ class SettingsRepositoryImpl @Inject constructor(
     private val _autoRemoveCompleted = MutableStateFlow(prefs.getBoolean(KEY_AUTO_REMOVE_COMPLETED, DEFAULT_VALUE))
     private val autoRemoveCompleted = _autoRemoveCompleted.asStateFlow()
 
+    private val _autoRetryFailed = MutableStateFlow(prefs.getBoolean(KEY_AUTO_RETRY_FAILED, DEFAULT_VALUE))
+    private val autoRetryFailed = _autoRetryFailed.asStateFlow()
+
+    private fun readHiddenIds(): Set<String> {
+        val s = prefs.getString(KEY_HIDDEN_COMPLETED_IDS, "") ?: ""
+        return if (s.isBlank()) emptySet() else s.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+    }
+
+    private val _hiddenCompletedIds = MutableStateFlow(readHiddenIds())
+    private val hiddenCompletedIds = _hiddenCompletedIds.asStateFlow()
+
     private val listener = SharedPreferences.OnSharedPreferenceChangeListener { sp, key ->
         if (key == KEY_AUTO_REMOVE_COMPLETED) {
             _autoRemoveCompleted.value = sp.getBoolean(KEY_AUTO_REMOVE_COMPLETED, DEFAULT_VALUE)
+        }
+        if (key == KEY_AUTO_RETRY_FAILED) {
+            _autoRetryFailed.value = sp.getBoolean(KEY_AUTO_RETRY_FAILED, DEFAULT_VALUE)
+        }
+        if (key == KEY_HIDDEN_COMPLETED_IDS) {
+            _hiddenCompletedIds.value = readHiddenIds()
         }
     }
 
@@ -41,4 +60,15 @@ class SettingsRepositoryImpl @Inject constructor(
     }
 
     override fun observeAutoRemoveCompleted(): Flow<Boolean> = autoRemoveCompleted
+    override fun observeAutoRetryFailed(): Flow<Boolean> = autoRetryFailed
+    override fun observeHiddenCompletedIds(): Flow<Set<String>> = hiddenCompletedIds
+
+    override fun addHiddenCompletedIds(ids: Set<String>) {
+        val current = readHiddenIds().toMutableSet()
+        current.addAll(ids)
+        val joined = current.joinToString(",")
+        prefs.edit().putString(KEY_HIDDEN_COMPLETED_IDS, joined).apply()
+        // update flow immediately
+        _hiddenCompletedIds.value = current
+    }
 }
