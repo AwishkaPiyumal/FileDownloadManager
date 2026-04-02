@@ -19,8 +19,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlinx.coroutines.flow.first
 
 /**
  * DownloadService - Foreground Service
@@ -31,11 +33,6 @@ import javax.inject.Inject
  * - Survives app closure and screen lock
  * - Handles multiple simultaneous downloads
  *
- * Architecture:
- * - Uses Foreground Service (required for Android 8+)
- * - Shows notification to user (Google Play policy requirement)
- * - Integrates with DownloadManager for actual download logic
- * - Updates Room database with progress
  */
 @AndroidEntryPoint
 class DownloadService : Service() {
@@ -47,7 +44,13 @@ class DownloadService : Service() {
     lateinit var downloadDao: DownloadDao
 
     @Inject
-    lateinit var downloadQueueManager: com.piumal.filedownloadmanager.domain.manager.DownloadQueueManager
+    lateinit var downloadQueueManager: DownloadQueueManager
+
+    @Inject
+    lateinit var observerNotifyCompletionUseCase: com.piumal.filedownloadmanager.domain.usecase.settings.ObserveNotifyDownloadCompletionUseCase
+
+    @Inject
+    lateinit var observerNotifyFailureUseCase: com.piumal.filedownloadmanager.domain.usecase.settings.ObserveNotifyDownloadFailureUseCase
 
     // Coroutine scope for service
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -60,6 +63,13 @@ class DownloadService : Service() {
 
     // Notification helper for download notifications
     private lateinit var notificationHelper: DownloadNotificationHelper
+
+    // Cached notification preference flags (updated from settings repository)
+    @Volatile
+    private var notifyCompletionEnabled: Boolean = true
+
+    @Volatile
+    private var notifyFailureEnabled: Boolean = true
 
     companion object {
         private const val TAG = "DownloadService"
@@ -133,11 +143,33 @@ class DownloadService : Service() {
             notificationHelper = DownloadNotificationHelper(this)
             Log.d(TAG, "NotificationHelper initialized")
 
+            // Observe settings so we always have the latest preference without races
+            serviceScope.launch {
+                try {
+                    observerNotifyCompletionUseCase().collect { enabled ->
+                        notifyCompletionEnabled = enabled
+                        Log.d(TAG, "notifyCompletionEnabled updated: $enabled")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error observing notify completion setting", e)
+                }
+            }
+
+            serviceScope.launch {
+                try {
+                    observerNotifyFailureUseCase().collect { enabled ->
+                        notifyFailureEnabled = enabled
+                        Log.d(TAG, "notifyFailureEnabled updated: $enabled")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error observing notify failure setting", e)
+                }
+            }
+
             // Note: We'll start foreground when first download starts
             // No need to show service notification immediately
-            Log.d(TAG, "Service created, will start foreground with first download")
         } catch (e: Exception) {
-            Log.e(TAG, "Error in onCreate", e)
+            Log.e(TAG, "Error initializing service components", e)
         }
     }
 
@@ -395,23 +427,46 @@ class DownloadService : Service() {
                                 )
                             }
                             DownloadStatus.COMPLETED -> {
-                                // Show completion notification
-                                notificationHelper.showCompletedNotification(
-                                    downloadId = downloadId,
-                                    fileName = downloadItem.fileName,
-                                    filePath = downloadItem.filePath
-                                )
+                                // Show completion notification only if user has enabled it in settings
+                                if (notifyCompletionEnabled) {
+                                    notificationHelper.showCompletedNotification(
+                                        downloadId = downloadId,
+                                        fileName = downloadItem.fileName,
+                                        filePath = downloadItem.filePath
+                                    )
+                                } else {
+                                    Log.d(TAG, "Notify completion disabled by user; skipping notification for $downloadId")
+                                    // Keep the progress notification visible but do not transition to a 'completed' notification.
+                                    // Show a static progress/paused notification at 100% so the panel doesn't mark it completed.
+                                    try {
+                                        notificationHelper.showProgressNotification(
+                                            downloadId = downloadId,
+                                            fileName = downloadItem.fileName,
+                                            downloadedSize = downloadItem.totalSize,
+                                            totalSize = downloadItem.totalSize,
+                                            percentage = 100,
+                                            status = DownloadStatus.PAUSED
+                                        )
+                                    } catch (e: Exception) {
+                                        Log.e(TAG, "Failed to update progress notification when completion notifications are disabled", e)
+                                    }
+                                }
+
                                 // Notify queue manager to start next download
                                 downloadQueueManager.onDownloadComplete(downloadId)
                                 activeDownloads.remove(downloadId)
                             }
                             DownloadStatus.FAILED -> {
-                                // Show failed notification
-                                notificationHelper.showFailedNotification(
-                                    downloadId = downloadId,
-                                    fileName = downloadItem.fileName,
-                                    errorMessage = progress.error
-                                )
+                                // Show failed notification only if user enabled it
+                                if (notifyFailureEnabled) {
+                                    notificationHelper.showFailedNotification(
+                                        downloadId = downloadId,
+                                        fileName = downloadItem.fileName,
+                                        errorMessage = progress.error
+                                    )
+                                } else {
+                                    Log.d(TAG, "Notify failure disabled by user; skipping failed notification for $downloadId")
+                                }
                                 // Notify queue manager to start next download
                                 downloadQueueManager.onDownloadComplete(downloadId)
                                 activeDownloads.remove(downloadId)

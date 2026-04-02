@@ -6,22 +6,24 @@ import androidx.lifecycle.viewModelScope
 import com.piumal.filedownloadmanager.domain.model.DownloadConfig
 import com.piumal.filedownloadmanager.domain.model.DownloadItem
 import com.piumal.filedownloadmanager.domain.repository.DownloadRepository
-import com.piumal.filedownloadmanager.domain.usecase.DeleteSelectedDownloadsUseCase
-import com.piumal.filedownloadmanager.domain.usecase.DownloadFilterType
-import com.piumal.filedownloadmanager.domain.usecase.FilterDownloadsUseCase
-import com.piumal.filedownloadmanager.domain.usecase.ObserveAutoRemoveCompletedUseCase
-import com.piumal.filedownloadmanager.domain.usecase.ObserveAutoRetryFailedUseCase
-import com.piumal.filedownloadmanager.domain.usecase.ObserveHiddenCompletedIdsUseCase
-import com.piumal.filedownloadmanager.domain.usecase.AddHiddenCompletedIdsUseCase
-import com.piumal.filedownloadmanager.domain.usecase.SortDownloadsUseCase
-import com.piumal.filedownloadmanager.domain.usecase.StartDownloadUseCase
+import com.piumal.filedownloadmanager.domain.usecase.download.DeleteSelectedDownloadsUseCase
+import com.piumal.filedownloadmanager.domain.usecase.download.DownloadFilterType
+import com.piumal.filedownloadmanager.domain.usecase.download.FilterDownloadsUseCase
+import com.piumal.filedownloadmanager.domain.usecase.settings.ObserveAutoRemoveCompletedUseCase
+import com.piumal.filedownloadmanager.domain.usecase.settings.ObserveAutoRetryFailedUseCase
+import com.piumal.filedownloadmanager.domain.usecase.settings.ObserveHiddenCompletedIdsUseCase
+import com.piumal.filedownloadmanager.domain.usecase.settings.AddHiddenCompletedIdsUseCase
+import com.piumal.filedownloadmanager.domain.usecase.download.SortDownloadsUseCase
+import com.piumal.filedownloadmanager.domain.usecase.download.StartDownloadUseCase
 import com.piumal.filedownloadmanager.ui.downloads.components.SortOption
+import com.piumal.filedownloadmanager.ui.downloads.components.SortCategory
+import com.piumal.filedownloadmanager.ui.downloads.components.SortOrder
+import com.piumal.filedownloadmanager.domain.usecase.download.FileAlreadyExistsException
+import com.piumal.filedownloadmanager.domain.usecase.download.SortOption as DomainSortOption
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -191,12 +193,11 @@ class DownloadScreenViewModel @Inject constructor(
     private fun observeDownloads() {
         viewModelScope.launch {
             try {
-                var previousList: List<DownloadItem> = emptyList()
+                var previousFailedIds: Set<String> = emptySet()
                 downloadRepository.getAllDownloads().collect { downloads ->
-                    // Detect transitions to FAILED
-                    val newlyFailed = downloads.filter { it.isFailed() }
-                        .map { it.id }
-                        .toSet() - previousList.filter { it.isFailed() }.map { it.id }.toSet()
+                    // Compute current failed IDs and detect newly failed items since last emission
+                    val currentFailedIds = downloads.filter { it.isFailed() }.map { it.id }.toSet()
+                    val newlyFailed = currentFailedIds - previousFailedIds
 
                     // Attempt retries for newly failed items if setting enabled
                     if (autoRetryEnabled) {
@@ -217,7 +218,8 @@ class DownloadScreenViewModel @Inject constructor(
                     // Clean up retried set for items that are no longer failed
                     clearRetriedIfStateChanged(downloads)
 
-                    previousList = downloads
+                    // Update previous failed ids for next emission
+                    previousFailedIds = currentFailedIds
 
                     _uiState.update { currentState ->
                         val filteredAndSorted = getFilteredAndSortedDownloads(
@@ -242,7 +244,7 @@ class DownloadScreenViewModel @Inject constructor(
     /**
      * Apply auto-remove completed setting to a list of downloads
      */
-    private fun applyAutoRemoveFilter(items: List<com.piumal.filedownloadmanager.domain.model.DownloadItem>): List<com.piumal.filedownloadmanager.domain.model.DownloadItem> {
+    private fun applyAutoRemoveFilter(items: List<DownloadItem>): List<DownloadItem> {
         // First remove any items that are explicitly hidden (persisted)
         var result = items.filter { !hiddenCompletedIds.contains(it.id) }
         // If hideCompleted setting is on, remove currently completed items as well and persist them
@@ -316,7 +318,7 @@ class DownloadScreenViewModel @Inject constructor(
                     Log.e("DownloadScreenVM", "Download failed to start", error)
 
                     // Check if it's a FileAlreadyExistsException
-                    if (error is com.piumal.filedownloadmanager.domain.usecase.FileAlreadyExistsException) {
+                    if (error is FileAlreadyExistsException) {
                         // Show file exists dialog
                         Log.d("DownloadScreenVM", "File already exists, showing confirmation dialog")
                         _uiState.update {
@@ -482,7 +484,7 @@ class DownloadScreenViewModel @Inject constructor(
     /**
      * Handle download item more options click
      */
-    fun onDownloadItemMoreClick(item: DownloadItem) {
+    fun onDownloadItemMoreClick(_item: DownloadItem) {
         // TODO: Show options menu for this item
         // This will be implemented when we add item actions
     }
@@ -712,9 +714,21 @@ class DownloadScreenViewModel @Inject constructor(
         val filteredDownloads = filterDownloadsUseCase(allDownloads, filterType)
 
         // Step 2: Sort filtered downloads based on selected sort option
-        val sortedDownloads = sortDownloadsUseCase(filteredDownloads, sortOption)
+        val domainOption = toDomainSortOption(sortOption)
+        val sortedDownloads = sortDownloadsUseCase(filteredDownloads, domainOption)
 
         return sortedDownloads
+    }
+
+    /**
+     * Map UI SortOption (category+order) to domain SortOption enum
+     */
+    private fun toDomainSortOption(option: SortOption): DomainSortOption {
+        return when (option.category) {
+            SortCategory.DATE -> if (option.order == SortOrder.ASCENDING) DomainSortOption.DATE_ASC else DomainSortOption.DATE_DESC
+            SortCategory.NAME -> if (option.order == SortOrder.ASCENDING) DomainSortOption.NAME_ASC else DomainSortOption.NAME_DESC
+            SortCategory.SIZE -> if (option.order == SortOrder.ASCENDING) DomainSortOption.SIZE_ASC else DomainSortOption.SIZE_DESC
+        }
     }
 
     /**

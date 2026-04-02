@@ -1,4 +1,4 @@
-package com.piumal.filedownloadmanager.domain.usecase
+package com.piumal.filedownloadmanager.domain.usecase.util
 
 import com.piumal.filedownloadmanager.domain.util.ContentValidator
 import javax.inject.Inject
@@ -15,4 +15,3 @@ class ExtractFileNameUseCase @Inject constructor() {
             ?: "download_${System.currentTimeMillis()}"
     }
 }
-

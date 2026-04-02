@@ -3,31 +3,38 @@ package com.piumal.filedownloadmanager.ui.downloads.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.piumal.filedownloadmanager.domain.model.DownloadConfig
-import com.piumal.filedownloadmanager.domain.usecase.ExtractFileNameUseCase
-import com.piumal.filedownloadmanager.domain.usecase.GetClipboardUrlUseCase
-import com.piumal.filedownloadmanager.domain.usecase.IsAutoFetchUrlEnabledUseCase
+import com.piumal.filedownloadmanager.domain.usecase.util.ExtractFileNameUseCase
+import com.piumal.filedownloadmanager.domain.usecase.util.GetClipboardUrlUseCase
+import com.piumal.filedownloadmanager.domain.usecase.settings.IsAutoFetchUrlEnabledUseCase
+import com.piumal.filedownloadmanager.domain.usecase.settings.IsAskDownloadFolderEnabledUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * ViewModel for AddDownloadDialog
  * Manages state and business logic for the download dialog
- * Follows MVVM architecture pattern
+ * Follows MVVM architecture pattern with Hilt DI
  *
  * Features:
  * - Auto-fetch URL from clipboard (only when setting is enabled)
  * - Extract file name from URL
  * - Schedule download for later
+ * - Check ask download folder setting
  */
-class AddDownloadViewModel(
+@HiltViewModel
+class AddDownloadViewModel @Inject constructor(
     private val getClipboardUrlUseCase: GetClipboardUrlUseCase,
     private val extractFileNameUseCase: ExtractFileNameUseCase,
     private val isAutoFetchUrlEnabledUseCase: IsAutoFetchUrlEnabledUseCase,
-    private val defaultDownloadPath: String = "/storage/emulated/0/Download/FileDownloadManager"
+    private val isAskDownloadFolderEnabledUseCase: IsAskDownloadFolderEnabledUseCase
 ) : ViewModel() {
+
+    private val defaultDownloadPath: String = "/storage/emulated/0/Download/FileDownloadManager"
 
     // UI State
     private val _uiState = MutableStateFlow(AddDownloadUiState())
@@ -128,6 +135,13 @@ class AddDownloadViewModel(
      */
     fun reset() {
         _uiState.value = AddDownloadUiState(filePath = defaultDownloadPath)
+    }
+
+    /**
+     * Check if ask download folder setting is enabled
+     */
+    fun isAskDownloadFolderEnabled(): Boolean {
+        return isAskDownloadFolderEnabledUseCase()
     }
 }
 

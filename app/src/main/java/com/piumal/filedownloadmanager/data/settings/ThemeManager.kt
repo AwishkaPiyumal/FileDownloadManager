@@ -1,4 +1,4 @@
-package com.piumal.filedownloadmanager.domain.manager
+package com.piumal.filedownloadmanager.data.settings
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -20,7 +20,7 @@ import javax.inject.Singleton
  * - Emits updates via StateFlow for reactive UI updates
  * - Allows overriding system default theme
  *
- * Architecture: Domain layer manager following Clean Architecture
+ * Architecture: Data layer manager - handles theme persistence
  */
 @Singleton
 class ThemeManager @Inject constructor(
@@ -72,8 +72,6 @@ class ThemeManager @Inject constructor(
      * Toggle dark mode setting
      */
     fun toggleDarkMode() {
-        val newValue = !_isDarkMode.value
-        setDarkMode(newValue)
+        setDarkMode(!getDarkModeSetting())
     }
 }
-

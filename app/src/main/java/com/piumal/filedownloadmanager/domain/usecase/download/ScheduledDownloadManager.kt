@@ -1,10 +1,7 @@
-package com.piumal.filedownloadmanager.domain.usecase
+package com.piumal.filedownloadmanager.domain.usecase.download
 
-import android.content.Context
-import com.piumal.filedownloadmanager.data.download.DownloadService
 import com.piumal.filedownloadmanager.domain.model.DownloadItem
 import com.piumal.filedownloadmanager.domain.repository.DownloadRepository
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -20,7 +17,7 @@ import javax.inject.Singleton
  * Follows MVVM and Clean Code Architecture
  *
  * Background Download Support:
- * - Uses DownloadService for actual downloads
+ * - Uses Repository for actual downloads (which handles service internally)
  * - Downloads persist through app closure
  * - Survives device reboot (downloads restart via BootReceiver)
  *
@@ -29,7 +26,6 @@ import javax.inject.Singleton
  */
 @Singleton
 class ScheduledDownloadManager @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val repository: DownloadRepository
 ) {
     private val scheduledJobs = mutableMapOf<String, Job>()
@@ -54,10 +50,9 @@ class ScheduledDownloadManager @Inject constructor(
                 // Wait until scheduled time
                 delay(delay)
 
-                // Start the download at scheduled time using DownloadService
+                // Start the download at scheduled time via repository
                 try {
-                    // Use String ID directly
-                    DownloadService.startDownload(context, downloadItem.id)
+                    repository.startDownload(downloadItem)
                 } catch (e: Exception) {
                     // Handle error - could log or notify user
                     e.printStackTrace()
@@ -72,7 +67,7 @@ class ScheduledDownloadManager @Inject constructor(
         } else {
             // Time already passed, start immediately
             scope.launch {
-                DownloadService.startDownload(context, downloadItem.id)
+                repository.startDownload(downloadItem)
             }
         }
     }
@@ -107,4 +102,3 @@ class ScheduledDownloadManager @Inject constructor(
         scheduledJobs.clear()
     }
 }
-

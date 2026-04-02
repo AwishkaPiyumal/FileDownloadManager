@@ -1,4 +1,4 @@
-package com.piumal.filedownloadmanager.domain.usecase
+package com.piumal.filedownloadmanager.domain.usecase.util
 
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -38,4 +38,3 @@ class FormatFileSizeUseCase @Inject constructor() {
         return "${invoke(downloadedSize)} / ${invoke(totalSize)}"
     }
 }
-

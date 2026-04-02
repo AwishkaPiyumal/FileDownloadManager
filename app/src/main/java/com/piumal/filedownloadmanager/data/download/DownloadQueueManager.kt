@@ -1,9 +1,10 @@
-package com.piumal.filedownloadmanager.domain.manager
+package com.piumal.filedownloadmanager.data.download
 
 import android.content.Context
 import android.util.Log
 import com.piumal.filedownloadmanager.data.local.dao.DownloadDao
 import com.piumal.filedownloadmanager.domain.model.DownloadStatus
+import com.piumal.filedownloadmanager.domain.repository.SettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,18 +30,17 @@ import javax.inject.Singleton
  * - Automatically starts next download when one completes
  * - Thread-safe operations using Mutex
  *
- * Architecture: Domain layer manager following Clean Architecture
+ * Architecture: Data layer component - handles download orchestration
+ * Uses SettingsRepository for settings (Clean Architecture compliance)
  */
 @Singleton
 class DownloadQueueManager @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val downloadDao: DownloadDao
+    private val downloadDao: DownloadDao,
+    private val settingsRepository: SettingsRepository
 ) {
     companion object {
         private const val TAG = "DownloadQueueManager"
-        private const val PREFS_NAME = "settings_prefs"
-        private const val KEY_PARALLEL_DOWNLOAD = "parallel_download"
-        private const val DEFAULT_PARALLEL_LIMIT = 3
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -50,27 +50,21 @@ class DownloadQueueManager @Inject constructor(
     private val _activeDownloads = MutableStateFlow<Set<String>>(emptySet())
     val activeDownloads: StateFlow<Set<String>> = _activeDownloads.asStateFlow()
 
-    // SharedPreferences for getting parallel download limit
-    private val sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-
-    // Listener to auto-refresh queue when parallel limit changes
-    private val prefsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key == KEY_PARALLEL_DOWNLOAD) {
-            Log.d(TAG, "Parallel download limit changed, refreshing queue")
-            refreshQueue()
-        }
-    }
-
     init {
-        // Register listener for preference changes
-        sharedPreferences.registerOnSharedPreferenceChangeListener(prefsListener)
+        // Observe parallel limit changes and refresh queue
+        scope.launch {
+            settingsRepository.observeParallelDownloadLimit().collect {
+                Log.d(TAG, "Parallel download limit changed to $it, refreshing queue")
+                refreshQueue()
+            }
+        }
     }
 
     /**
      * Get current parallel download limit from settings
      */
     fun getParallelLimit(): Int {
-        return sharedPreferences.getInt(KEY_PARALLEL_DOWNLOAD, DEFAULT_PARALLEL_LIMIT)
+        return settingsRepository.getParallelDownloadLimit()
     }
 
     /**
@@ -178,10 +172,7 @@ class DownloadQueueManager @Inject constructor(
             )
 
             // Start the download via DownloadService
-            com.piumal.filedownloadmanager.data.download.DownloadService.startDownload(
-                context,
-                download.id
-            )
+            DownloadService.startDownload(context, download.id)
         }
     }
 
@@ -243,4 +234,3 @@ class DownloadQueueManager @Inject constructor(
         startNextQueuedDownload()
     }
 }
-

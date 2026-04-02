@@ -12,7 +12,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.piumal.filedownloadmanager.domain.usecase.DownloadFilterType
+import com.piumal.filedownloadmanager.domain.usecase.download.DownloadFilterType
 import com.piumal.filedownloadmanager.ui.downloads.components.AddDownloadDialog
 import com.piumal.filedownloadmanager.ui.downloads.components.DeleteSelectedConfirmDialog
 import com.piumal.filedownloadmanager.ui.downloads.components.DownloadFAB

@@ -1,18 +1,14 @@
-package com.piumal.filedownloadmanager.domain.usecase
+package com.piumal.filedownloadmanager.domain.usecase.download
 
-import android.content.Context
 import android.util.Log
-import com.piumal.filedownloadmanager.data.download.DownloadService
 import com.piumal.filedownloadmanager.domain.model.DownloadItem
 import com.piumal.filedownloadmanager.domain.model.DownloadStatus
 import com.piumal.filedownloadmanager.domain.repository.DownloadRepository
 import com.piumal.filedownloadmanager.domain.util.ContentValidator
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.first
 import java.io.File
-import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -30,18 +26,16 @@ import javax.inject.Singleton
  * - Ensures user responsibility
  *
  * Background Download Support:
- * - Uses DownloadService (Foreground Service)
+ * - Uses DownloadService (Foreground Service) via Repository
  * - Downloads continue when app is closed
  * - Survives device reboot (via BootReceiver)
  * - Auto-resumes on network restore (via NetworkChangeReceiver)
  *
- * @param context Application context
  * @param repository Download repository interface
  * @param scheduledDownloadManager Scheduled download manager
  */
 @Singleton
 class StartDownloadUseCase @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val repository: DownloadRepository,
     private val scheduledDownloadManager: ScheduledDownloadManager
 ) {
@@ -139,7 +133,7 @@ class StartDownloadUseCase @Inject constructor(
                 if (existingActiveDownload != null) {
                     // Resume existing download instead of creating new one
                     Log.d("StartDownloadUseCase", "Found existing download, resuming: ${existingActiveDownload.id}")
-                    DownloadService.startDownload(context, existingActiveDownload.id)
+                    repository.resumeDownload(existingActiveDownload.id)
                     emit(Result.success(existingActiveDownload))
                     return@flow
                 }
@@ -179,11 +173,11 @@ class StartDownloadUseCase @Inject constructor(
                 repository.scheduleDownload(downloadItem, scheduleTime)
                 scheduledDownloadManager.scheduleDownload(downloadItem, scheduleTime)
             } else {
-                // Start immediately using DownloadService (background service)
+                // Start immediately via repository (which handles the service internally)
                 // This allows download to continue even if app is closed
-                Log.d("StartDownloadUseCase", "Starting download service immediately with ID: ${downloadItem.id}")
-                DownloadService.startDownload(context, downloadItem.id)
-                Log.d("StartDownloadUseCase", "Download service started")
+                Log.d("StartDownloadUseCase", "Starting download immediately with ID: ${downloadItem.id}")
+                repository.startDownload(downloadItem)
+                Log.d("StartDownloadUseCase", "Download started via repository")
             }
 
             // Step 8: Emit success

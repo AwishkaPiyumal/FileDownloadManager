@@ -20,7 +20,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
 import androidx.navigation.compose.rememberNavController
-import com.piumal.filedownloadmanager.domain.manager.ThemeManager
+import com.piumal.filedownloadmanager.data.settings.ThemeManager
 import com.piumal.filedownloadmanager.ui.theme.FileDownloadManagerTheme
 import dagger.hilt.android.AndroidEntryPoint
 import com.piumal.filedownloadmanager.ui.MainScreen

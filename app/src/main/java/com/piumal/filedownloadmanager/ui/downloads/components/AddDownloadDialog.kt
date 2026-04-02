@@ -19,14 +19,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.piumal.filedownloadmanager.R
 
 import com.piumal.filedownloadmanager.domain.model.DownloadConfig
-import com.piumal.filedownloadmanager.domain.usecase.ExtractFileNameUseCase
-import com.piumal.filedownloadmanager.domain.usecase.GetClipboardUrlUseCase
-import com.piumal.filedownloadmanager.domain.usecase.IsAutoFetchUrlEnabledUseCase
-import com.piumal.filedownloadmanager.domain.usecase.IsAskDownloadFolderEnabledUseCase
 import com.piumal.filedownloadmanager.ui.downloads.viewmodel.AddDownloadViewModel
 
 
@@ -44,7 +40,7 @@ import com.piumal.filedownloadmanager.ui.downloads.viewmodel.AddDownloadViewMode
 fun AddDownloadDialog(
     onDismiss: () -> Unit,
     onDownload: (DownloadConfig) -> Unit,
-    viewModel: AddDownloadViewModel = createAddDownloadViewModel()
+    viewModel: AddDownloadViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -264,8 +260,8 @@ fun AddDownloadDialog(
                                 // Show warning as error message (no dialog)
                                 validationError = validation.warningMessage
                             } else {
-                                // Check ask-download-folder setting
-                                val isAsk = IsAskDownloadFolderEnabledUseCase(context)()
+                                // Check ask-download-folder setting via ViewModel
+                                val isAsk = viewModel.isAskDownloadFolderEnabled()
 
                                 if (isAsk) {
                                     // Launch folder picker to get destination path, download continues in launcher callback
@@ -319,22 +315,3 @@ fun AddDownloadDialog(
     }
 }
 
-/**
- * Factory function to create AddDownloadViewModel with dependencies
- * This is a simple factory - in production, use Hilt/Koin for DI
- */
-@Composable
-private fun createAddDownloadViewModel(): AddDownloadViewModel {
-    val context = LocalContext.current
-    val getClipboardUrlUseCase = remember { GetClipboardUrlUseCase(context) }
-    val extractFileNameUseCase = remember { ExtractFileNameUseCase() }
-    val isAutoFetchUrlEnabledUseCase = remember { IsAutoFetchUrlEnabledUseCase(context) }
-
-    return viewModel {
-        AddDownloadViewModel(
-            getClipboardUrlUseCase = getClipboardUrlUseCase,
-            extractFileNameUseCase = extractFileNameUseCase,
-            isAutoFetchUrlEnabledUseCase = isAutoFetchUrlEnabledUseCase
-        )
-    }
-}
