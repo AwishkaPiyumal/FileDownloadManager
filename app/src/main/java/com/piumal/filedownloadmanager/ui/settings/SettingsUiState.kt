@@ -30,8 +30,13 @@ data class SettingsUiState(
 
     // Notification settings
     val notificationsEnabled: Boolean = true,
+    val notifyDownloadCompletion: Boolean = true,
+    val notifyDownloadFailure: Boolean = true,
+    val completionRingtone: String = "Default",
+    val failureRingtone: String = "Default",
+    val vibrateEnabled: Boolean = true,
+    val lightEnabled: Boolean = true,
 
     // Advanced settings (placeholders for future)
     val maxRetryCount: Int = 3
 )
-

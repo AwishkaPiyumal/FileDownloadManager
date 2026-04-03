@@ -1,4 +1,4 @@
-package com.piumal.filedownloadmanager.domain.usecase
+package com.piumal.filedownloadmanager.domain.usecase.download
 
 import android.util.Log
 import com.piumal.filedownloadmanager.domain.model.DownloadStatus
@@ -74,4 +74,3 @@ class RetryAllDownloadsUseCase @Inject constructor(
         }
     }
 }
-

@@ -1,4 +1,4 @@
-package com.piumal.filedownloadmanager.domain.usecase
+package com.piumal.filedownloadmanager.domain.usecase.download
 
 import com.piumal.filedownloadmanager.domain.model.DownloadItem
 import com.piumal.filedownloadmanager.domain.model.DownloadStatus
@@ -63,4 +63,3 @@ enum class DownloadFilterType {
     ACTIVE,
     COMPLETED
 }
-

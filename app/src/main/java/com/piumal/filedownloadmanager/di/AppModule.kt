@@ -64,4 +64,13 @@ object AppModule {
     ): com.piumal.filedownloadmanager.domain.repository.SettingsRepository {
         return com.piumal.filedownloadmanager.data.settings.SettingsRepositoryImpl(context)
     }
+
+    // Provide ClipboardRepository implementation
+    @Provides
+    @Singleton
+    fun provideClipboardRepository(
+        @ApplicationContext context: Context
+    ): com.piumal.filedownloadmanager.domain.repository.ClipboardRepository {
+        return com.piumal.filedownloadmanager.data.repository.ClipboardRepositoryImpl(context)
+    }
 }

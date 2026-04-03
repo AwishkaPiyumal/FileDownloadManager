@@ -2,7 +2,7 @@ package com.piumal.filedownloadmanager.ui.downloads.viewmodel
 
 import androidx.lifecycle.ViewModel
 import com.piumal.filedownloadmanager.domain.model.DownloadItem
-import com.piumal.filedownloadmanager.domain.usecase.FormatFileSizeUseCase
+import com.piumal.filedownloadmanager.domain.usecase.util.FormatFileSizeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

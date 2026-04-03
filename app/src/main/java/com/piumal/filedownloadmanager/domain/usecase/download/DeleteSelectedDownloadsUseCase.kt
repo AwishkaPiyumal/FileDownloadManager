@@ -1,4 +1,4 @@
-package com.piumal.filedownloadmanager.domain.usecase
+package com.piumal.filedownloadmanager.domain.usecase.download
 
 import android.content.Context
 import android.os.Environment
@@ -112,7 +112,10 @@ class DeleteSelectedDownloadsUseCase @Inject constructor(
                         if (!fileDeleted) {
                             val appDownloadsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
                             if (appDownloadsDir != null) {
-                                val appFile = File(File(appDownloadsDir, "FileDownloadManager"), download.fileName)
+                                val appFile = File(
+                                    File(appDownloadsDir, "FileDownloadManager"),
+                                    download.fileName
+                                )
                                 if (appFile.exists()) {
                                     fileDeleted = appFile.delete()
                                     Log.d(TAG, "Deleted from app-specific storage: ${appFile.absolutePath} - Result: $fileDeleted")
@@ -159,4 +162,3 @@ class DeleteSelectedDownloadsUseCase @Inject constructor(
         }
     }
 }
-

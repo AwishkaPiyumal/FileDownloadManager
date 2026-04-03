@@ -3,9 +3,9 @@ package com.piumal.filedownloadmanager.ui.downloads.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.piumal.filedownloadmanager.domain.usecase.PauseAllDownloadsUseCase
-import com.piumal.filedownloadmanager.domain.usecase.ResumeAllDownloadsUseCase
-import com.piumal.filedownloadmanager.domain.usecase.RetryAllDownloadsUseCase
+import com.piumal.filedownloadmanager.domain.usecase.download.PauseAllDownloadsUseCase
+import com.piumal.filedownloadmanager.domain.usecase.download.ResumeAllDownloadsUseCase
+import com.piumal.filedownloadmanager.domain.usecase.download.RetryAllDownloadsUseCase
 import com.piumal.filedownloadmanager.ui.downloads.components.MoreMenuAction
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow

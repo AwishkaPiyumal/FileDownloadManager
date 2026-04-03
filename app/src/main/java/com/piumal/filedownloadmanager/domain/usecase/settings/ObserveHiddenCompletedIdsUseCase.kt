@@ -1,4 +1,4 @@
-package com.piumal.filedownloadmanager.domain.usecase
+package com.piumal.filedownloadmanager.domain.usecase.settings
 
 import com.piumal.filedownloadmanager.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.Flow

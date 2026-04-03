@@ -32,6 +32,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         private const val KEY_AUTO_RETRY_FAILED = "auto_retry_failed"
         // Notification
         private const val KEY_NOTIFICATIONS = "notifications_enabled"
+        private const val KEY_NOTIFY_COMPLETION = "notify_download_completion"
+        private const val KEY_NOTIFY_FAILURE = "notify_download_failure"
+        private const val KEY_COMPLETION_RINGTONE = "completion_ringtone"
+        private const val KEY_FAILURE_RINGTONE = "failure_ringtone"
+        private const val KEY_VIBRATE = "notification_vibrate"
+        private const val KEY_LIGHT = "notification_light"
         // Advanced
         private const val KEY_MAX_RETRY_COUNT = "max_retry_count"
     }
@@ -61,6 +67,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     autoRetryFailed = sharedPreferences.getBoolean(KEY_AUTO_RETRY_FAILED, true),
                     // Notification
                     notificationsEnabled = sharedPreferences.getBoolean(KEY_NOTIFICATIONS, true),
+                    notifyDownloadCompletion = sharedPreferences.getBoolean(KEY_NOTIFY_COMPLETION, true),
+                    notifyDownloadFailure = sharedPreferences.getBoolean(KEY_NOTIFY_FAILURE, true),
+                    completionRingtone = sharedPreferences.getString(KEY_COMPLETION_RINGTONE, "Default") ?: "Default",
+                    failureRingtone = sharedPreferences.getString(KEY_FAILURE_RINGTONE, "Default") ?: "Default",
+                    vibrateEnabled = sharedPreferences.getBoolean(KEY_VIBRATE, true),
+                    lightEnabled = sharedPreferences.getBoolean(KEY_LIGHT, true),
                     // Advanced
                     maxRetryCount = sharedPreferences.getInt(KEY_MAX_RETRY_COUNT, 3)
                 )
@@ -154,6 +166,40 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val newValue = !_uiState.value.notificationsEnabled
         _uiState.update { it.copy(notificationsEnabled = newValue) }
         saveBoolean(KEY_NOTIFICATIONS, newValue)
+    }
+
+    fun toggleNotifyDownloadCompletion() {
+        val newValue = !_uiState.value.notifyDownloadCompletion
+        _uiState.update { it.copy(notifyDownloadCompletion = newValue) }
+        saveBoolean(KEY_NOTIFY_COMPLETION, newValue)
+    }
+
+    fun toggleNotifyDownloadFailure() {
+        val newValue = !_uiState.value.notifyDownloadFailure
+        _uiState.update { it.copy(notifyDownloadFailure = newValue) }
+        saveBoolean(KEY_NOTIFY_FAILURE, newValue)
+    }
+
+    fun setCompletionRingtone(name: String) {
+        _uiState.update { it.copy(completionRingtone = name) }
+        saveString(KEY_COMPLETION_RINGTONE, name)
+    }
+
+    fun setFailureRingtone(name: String) {
+        _uiState.update { it.copy(failureRingtone = name) }
+        saveString(KEY_FAILURE_RINGTONE, name)
+    }
+
+    fun toggleVibrate() {
+        val newValue = !_uiState.value.vibrateEnabled
+        _uiState.update { it.copy(vibrateEnabled = newValue) }
+        saveBoolean(KEY_VIBRATE, newValue)
+    }
+
+    fun toggleLight() {
+        val newValue = !_uiState.value.lightEnabled
+        _uiState.update { it.copy(lightEnabled = newValue) }
+        saveBoolean(KEY_LIGHT, newValue)
     }
 
     // Advanced settings

@@ -16,6 +16,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.piumal.filedownloadmanager.ui.settings.SettingsUiState
 import com.piumal.filedownloadmanager.ui.settings.SettingsViewModel
 import com.piumal.filedownloadmanager.ui.settings.components.SettingItem
+import com.piumal.filedownloadmanager.ui.settings.components.SettingsDivider
 import com.piumal.filedownloadmanager.ui.theme.FileDownloadManagerTheme
 
 /**
@@ -32,7 +33,13 @@ fun NotificationSettingsScreen(
 
     NotificationSettingsContent(
         uiState = uiState,
-        onToggleNotifications = viewModel::toggleNotifications
+        onToggleNotifications = viewModel::toggleNotifications,
+        onToggleNotifyCompletion = viewModel::toggleNotifyDownloadCompletion,
+        onToggleNotifyFailure = viewModel::toggleNotifyDownloadFailure,
+        onShowCompletionRingtone = { /* TODO: open ringtone picker */ },
+        onShowFailureRingtone = { /* TODO: open ringtone picker */ },
+        onToggleVibrate = viewModel::toggleVibrate,
+        onToggleLight = viewModel::toggleLight
     )
 }
 
@@ -40,6 +47,12 @@ fun NotificationSettingsScreen(
 fun NotificationSettingsContent(
     uiState: SettingsUiState,
     onToggleNotifications: () -> Unit,
+    onToggleNotifyCompletion: () -> Unit,
+    onToggleNotifyFailure: () -> Unit,
+    onShowCompletionRingtone: () -> Unit,
+    onShowFailureRingtone: () -> Unit,
+    onToggleVibrate: () -> Unit,
+    onToggleLight: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -48,11 +61,52 @@ fun NotificationSettingsContent(
             .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
     ) {
+        // Master toggle
         SettingItem(
-            title = "Enable notifications",
+            title = "Notify download completion",
             hasSwitch = true,
-            isEnabled = uiState.notificationsEnabled,
-            onToggle = onToggleNotifications
+            isEnabled = uiState.notifyDownloadCompletion,
+            onToggle = onToggleNotifyCompletion
+        )
+        SettingsDivider()
+
+        SettingItem(
+            title = "Notify download failure",
+            hasSwitch = true,
+            isEnabled = uiState.notifyDownloadFailure,
+            onToggle = onToggleNotifyFailure
+        )
+        SettingsDivider()
+
+        SettingItem(
+            title = "Download completion ringtone",
+            subtitle = uiState.completionRingtone,
+            hasChevron = true,
+            onClick = onShowCompletionRingtone
+        )
+        SettingsDivider()
+
+        SettingItem(
+            title = "Download failure ringtone",
+            subtitle = uiState.failureRingtone,
+            hasChevron = true,
+            onClick = onShowFailureRingtone
+        )
+        SettingsDivider()
+
+        SettingItem(
+            title = "Vibrate",
+            hasSwitch = true,
+            isEnabled = uiState.vibrateEnabled,
+            onToggle = onToggleVibrate
+        )
+        SettingsDivider()
+
+        SettingItem(
+            title = "Light",
+            hasSwitch = true,
+            isEnabled = uiState.lightEnabled,
+            onToggle = onToggleLight
         )
     }
 }
@@ -63,7 +117,13 @@ fun NotificationSettingsScreenPreview() {
     FileDownloadManagerTheme {
         NotificationSettingsContent(
             uiState = SettingsUiState(),
-            onToggleNotifications = {}
+            onToggleNotifications = {},
+            onToggleNotifyCompletion = {},
+            onToggleNotifyFailure = {},
+            onShowCompletionRingtone = {},
+            onShowFailureRingtone = {},
+            onToggleVibrate = {},
+            onToggleLight = {}
         )
     }
 }
@@ -74,8 +134,13 @@ fun NotificationSettingsScreenDarkPreview() {
     FileDownloadManagerTheme {
         NotificationSettingsContent(
             uiState = SettingsUiState(darkMode = true),
-            onToggleNotifications = {}
+            onToggleNotifications = {},
+            onToggleNotifyCompletion = {},
+            onToggleNotifyFailure = {},
+            onShowCompletionRingtone = {},
+            onShowFailureRingtone = {},
+            onToggleVibrate = {},
+            onToggleLight = {}
         )
     }
 }
-
