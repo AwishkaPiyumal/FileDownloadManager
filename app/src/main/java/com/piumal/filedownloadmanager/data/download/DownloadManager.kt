@@ -118,9 +118,39 @@ class DownloadManager @Inject constructor(
 
             // Execute request
             Log.d("DownloadManager", "Executing HTTP request...")
-            val response = okHttpClient.newCall(request).execute()
+            var response = okHttpClient.newCall(request).execute()
             Log.d("DownloadManager", "Response code: ${response.code}")
             Log.d("DownloadManager", "Response message: ${response.message}")
+
+            // Handle HTTP 416 (Range Not Satisfiable) - file may have changed on server
+            if (response.code == 416) {
+                Log.w("DownloadManager", "HTTP 416 (Range Not Satisfiable) - Server file may have changed. Restarting download from beginning.")
+                // Delete the partial file and restart download from 0
+                if (file.exists()) {
+                    file.delete()
+                    Log.d("DownloadManager", "Partial file deleted, restarting download")
+                }
+
+                // Make a new request without Range header
+                val newRequest = Request.Builder()
+                    .url(downloadItem.url)
+                    .addHeader("User-Agent", "FileDownloadManager/1.0")
+                    .build()
+
+                response = okHttpClient.newCall(newRequest).execute()
+                Log.d("DownloadManager", "Retry response code: ${response.code}")
+
+                if (!response.isSuccessful) {
+                    Log.e("DownloadManager", "Retry failed with HTTP error: ${response.code} - ${response.message}")
+                    emit(DownloadProgress(
+                        downloadedBytes = 0,
+                        totalBytes = 0,
+                        status = DownloadStatus.FAILED,
+                        error = "HTTP ${response.code}: ${response.message}"
+                    ))
+                    return@flow
+                }
+            }
 
             // Check response code (200 = new download, 206 = partial/resume)
             if (!response.isSuccessful && response.code != 206) {

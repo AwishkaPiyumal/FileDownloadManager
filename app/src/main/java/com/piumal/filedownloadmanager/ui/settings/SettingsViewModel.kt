@@ -168,12 +168,46 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         saveBoolean(KEY_NOTIFICATIONS, newValue)
     }
 
+    /**
+     * Toggle whether to show completion notifications.
+     *
+     * When enabled: Shows a completion notification when download finishes
+     * When disabled: Shows a 100% progress notification instead (doesn't mark as completed)
+     *
+     * Flow:
+     * 1. Updates local UI state immediately (MutableStateFlow)
+     * 2. Saves to SharedPreferences on background thread
+     * 3. SettingsRepository observes SharedPreferences change
+     * 4. SettingsRepository emits new value to Flow
+     * 5. DownloadService receives updated value via ObserveNotifyDownloadCompletionUseCase
+     * 6. DownloadService caches value in @Volatile notifyCompletionEnabled
+     * 7. When download completes, checks cached value to decide notification type
+     *
+     * Thread-safe: SharedPreferences listener updates Flow, DownloadService reads @Volatile variable
+     */
     fun toggleNotifyDownloadCompletion() {
         val newValue = !_uiState.value.notifyDownloadCompletion
         _uiState.update { it.copy(notifyDownloadCompletion = newValue) }
         saveBoolean(KEY_NOTIFY_COMPLETION, newValue)
     }
 
+    /**
+     * Toggle whether to show failure notifications.
+     *
+     * When enabled: Shows a failure notification when download fails
+     * When disabled: Silently skips failure notification
+     *
+     * Flow:
+     * 1. Updates local UI state immediately (MutableStateFlow)
+     * 2. Saves to SharedPreferences on background thread
+     * 3. SettingsRepository observes SharedPreferences change
+     * 4. SettingsRepository emits new value to Flow
+     * 5. DownloadService receives updated value via ObserveNotifyDownloadFailureUseCase
+     * 6. DownloadService caches value in @Volatile notifyFailureEnabled
+     * 7. When download fails, checks cached value to decide whether to show failure notification
+     *
+     * Thread-safe: SharedPreferences listener updates Flow, DownloadService reads @Volatile variable
+     */
     fun toggleNotifyDownloadFailure() {
         val newValue = !_uiState.value.notifyDownloadFailure
         _uiState.update { it.copy(notifyDownloadFailure = newValue) }
