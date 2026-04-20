@@ -243,20 +243,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun saveBoolean(key: String, value: Boolean) {
-        viewModelScope.launch {
-            sharedPreferences.edit().putBoolean(key, value).apply()
-        }
+        sharedPreferences.edit().putBoolean(key, value).commit()  // Changed from apply() to commit()
     }
 
     private fun saveInt(key: String, value: Int) {
-        viewModelScope.launch {
-            sharedPreferences.edit().putInt(key, value).apply()
-        }
+        sharedPreferences.edit().putInt(key, value).commit()  // Changed from apply() to commit()
     }
 
     private fun saveString(key: String, value: String) {
-        viewModelScope.launch {
-            sharedPreferences.edit().putString(key, value).apply()
-        }
+        sharedPreferences.edit().putString(key, value).commit()  // Changed from apply() to commit()
     }
 }

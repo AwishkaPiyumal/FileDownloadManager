@@ -59,6 +59,8 @@ class DownloadService : Service() {
     @Volatile
     private var notifyFailureEnabled: Boolean = true
 
+    private val settingsLock = java.util.concurrent.locks.ReentrantReadWriteLock()
+
     companion object {
         private const val TAG = "DownloadService"
         private const val NOTIFICATION_CHANNEL_ID = "download_channel"
@@ -203,14 +205,15 @@ class DownloadService : Service() {
     private fun createForegroundNotification(): Notification {
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setOngoing(false)
+            .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setSilent(true)
             .setShowWhen(false)
-            .setContentTitle("")
-            .setContentText("")
+            .setContentTitle("Download Manager")
+            .setContentText("Preparing downloads...")
             .setOnlyAlertOnce(true)
-            .setAutoCancel(true)
+            .setAutoCancel(false)
+            .setProgress(0, 0, true)
             .build()
     }
 
@@ -310,6 +313,9 @@ class DownloadService : Service() {
                                 Log.d(TAG, "=== DOWNLOAD COMPLETED: $downloadId ===")
                                 Log.d(TAG, "notifyCompletionEnabled: $notifyCompletionEnabled")
                                 
+                                // Small delay to ensure settings are fully propagated
+                                delay(100)
+
                                 if (notifyCompletionEnabled) {
                                     Log.d(TAG, "ACTION: Showing COMPLETION notification")
                                     // Show completion notification to replace progress notification
@@ -346,6 +352,10 @@ class DownloadService : Service() {
                             DownloadStatus.FAILED -> {
                                 Log.d(TAG, "=== DOWNLOAD FAILED: $downloadId ===")
                                 Log.d(TAG, "notifyFailureEnabled: $notifyFailureEnabled")
+
+                                // Small delay to ensure settings are fully propagated
+                                delay(100)
+
                                 if (notifyFailureEnabled) {
                                     notificationHelper.showFailedNotification(
                                         downloadId,
