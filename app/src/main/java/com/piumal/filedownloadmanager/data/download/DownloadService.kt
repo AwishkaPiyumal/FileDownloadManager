@@ -27,7 +27,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -48,6 +47,12 @@ class DownloadService : Service() {
     @Inject
     lateinit var observerNotifyFailureUseCase: ObserveNotifyDownloadFailureUseCase
 
+    @Inject
+    lateinit var observeVibrateUseCase: com.piumal.filedownloadmanager.domain.usecase.settings.ObserveVibrateUseCase
+
+    @Inject
+    lateinit var observeLightUseCase: com.piumal.filedownloadmanager.domain.usecase.settings.ObserveLightUseCase
+
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val activeDownloads = mutableMapOf<String, Job>()
     private lateinit var notificationManager: NotificationManager
@@ -59,7 +64,11 @@ class DownloadService : Service() {
     @Volatile
     private var notifyFailureEnabled: Boolean = true
 
-    private val settingsLock = java.util.concurrent.locks.ReentrantReadWriteLock()
+    @Volatile
+    private var vibrateEnabled: Boolean = true
+
+    @Volatile
+    private var lightEnabled: Boolean = true
 
     companion object {
         private const val TAG = "DownloadService"
@@ -140,6 +149,26 @@ class DownloadService : Service() {
                     Log.d(TAG, "notify failure observer cancelled (expected on service shutdown)")
                 }
             }
+            serviceScope.launch {
+                try {
+                    observeVibrateUseCase().collect { enabled ->
+                        vibrateEnabled = enabled
+                        Log.d(TAG, "vibrateEnabled updated: $enabled")
+                    }
+                } catch (e: Exception) {
+                    Log.d(TAG, "vibrate observer cancelled (expected on service shutdown)")
+                }
+            }
+            serviceScope.launch {
+                try {
+                    observeLightUseCase().collect { enabled ->
+                        lightEnabled = enabled
+                        Log.d(TAG, "lightEnabled updated: $enabled")
+                    }
+                } catch (e: Exception) {
+                    Log.d(TAG, "light observer cancelled (expected on service shutdown)")
+                }
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing service components", e)
         }
@@ -217,10 +246,10 @@ class DownloadService : Service() {
             .build()
     }
 
-    private var isForegroundStarted = false
-    private var foregroundDownloadId: String? = null
+     private var isForegroundStarted = false
+     private var foregroundDownloadId: String? = null
 
-    private fun startDownload(downloadId: String) {
+     private fun startDownload(downloadId: String) {
         Log.d(TAG, "=== startDownload called with ID: $downloadId ===")
         activeDownloads[downloadId]?.cancel()
         val job = serviceScope.launch {
@@ -270,7 +299,14 @@ class DownloadService : Service() {
                     .catch { e ->
                         Log.e(TAG, "Download error", e)
                         downloadDao.updateStatus(downloadId, DownloadStatus.FAILED.name, System.currentTimeMillis())
-                        notificationHelper.showFailedNotification(downloadId, downloadItem.fileName, e.message)
+
+                        notificationHelper.showFailedNotification(
+                            downloadId, 
+                            downloadItem.fileName, 
+                            e.message,
+                            vibrateEnabled,
+                            lightEnabled
+                        )
                     }
                     .collect { progress ->
                         downloadDao.updateProgress(
@@ -318,11 +354,15 @@ class DownloadService : Service() {
 
                                 if (notifyCompletionEnabled) {
                                     Log.d(TAG, "ACTION: Showing COMPLETION notification")
+
+
                                     // Show completion notification to replace progress notification
                                     notificationHelper.showCompletedNotification(
                                         downloadId,
                                         downloadItem.fileName,
-                                        downloadItem.filePath
+                                        downloadItem.filePath,
+                                        vibrateEnabled,
+                                        lightEnabled
                                     )
                                 } else {
                                     Log.d(TAG, "ACTION: Toggle OFF - Removing notification completely from panel")
@@ -360,7 +400,9 @@ class DownloadService : Service() {
                                     notificationHelper.showFailedNotification(
                                         downloadId,
                                         downloadItem.fileName,
-                                        progress.error
+                                        progress.error,
+                                        vibrateEnabled,
+                                        lightEnabled
                                     )
                                 }
                                 downloadQueueManager.onDownloadComplete(downloadId)

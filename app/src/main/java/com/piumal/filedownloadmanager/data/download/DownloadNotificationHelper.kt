@@ -6,7 +6,9 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
+import android.media.AudioAttributes
+import android.media.AudioManager
+import android.media.RingtoneManager
 import android.os.Build
 import android.webkit.MimeTypeMap
 import androidx.core.app.NotificationCompat
@@ -67,8 +69,13 @@ class DownloadNotificationHelper(private val context: Context) {
      */
     private fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Progress channel - Low importance, no sound
-            val progressChannel = NotificationChannel(
+            val defaultSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            val alertAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+
+            NotificationChannel(
                 CHANNEL_ID_PROGRESS,
                 CHANNEL_NAME_PROGRESS,
                 NotificationManager.IMPORTANCE_LOW
@@ -78,33 +85,37 @@ class DownloadNotificationHelper(private val context: Context) {
                 enableVibration(false)
                 setSound(null, null)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            }
+            }.also(notificationManager::createNotificationChannel)
 
-            // Complete channel - Default importance, with sound
-            val completeChannel = NotificationChannel(
+            NotificationChannel(
                 CHANNEL_ID_COMPLETE,
                 CHANNEL_NAME_COMPLETE,
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = "Notifies when download completes"
                 setShowBadge(true)
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 250, 250, 250)
+                enableLights(true)
+                lightColor = -0x10000
+                setSound(defaultSound, alertAttributes)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            }
+            }.also(notificationManager::createNotificationChannel)
 
-            // Failed channel - Default importance, with sound
-            val failedChannel = NotificationChannel(
+            NotificationChannel(
                 CHANNEL_ID_FAILED,
                 CHANNEL_NAME_FAILED,
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = "Notifies when download fails"
                 setShowBadge(true)
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 250, 250, 250)
+                enableLights(true)
+                lightColor = -0x10000
+                setSound(defaultSound, alertAttributes)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            }
-
-            notificationManager.createNotificationChannel(progressChannel)
-            notificationManager.createNotificationChannel(completeChannel)
-            notificationManager.createNotificationChannel(failedChannel)
+            }.also(notificationManager::createNotificationChannel)
         }
     }
 
@@ -206,11 +217,15 @@ class DownloadNotificationHelper(private val context: Context) {
      * @param downloadId Unique download identifier
      * @param fileName Name of the downloaded file
      * @param filePath Full path to the downloaded file
+     * @param vibrateEnabled Whether to vibrate on completion
+     * @param lightEnabled Whether to flash light on completion
      */
     fun showCompletedNotification(
         downloadId: String,
         fileName: String,
-        filePath: String
+        filePath: String,
+        vibrateEnabled: Boolean = true,
+        lightEnabled: Boolean = true
     ) {
         android.util.Log.d("NotificationHelper", "showCompletedNotification called: $fileName at $filePath")
 
@@ -230,6 +245,17 @@ class DownloadNotificationHelper(private val context: Context) {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(openIntent)
 
+        val defaultSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        builder.setSound(defaultSound, AudioManager.STREAM_NOTIFICATION)
+        
+        if (vibrateEnabled) {
+            builder.setVibrate(longArrayOf(0, 250, 250, 250))
+        }
+        
+        if (lightEnabled) {
+            builder.setLights(-0x10000, 1000, 1000)
+        }
+
         // Show notification - replaces existing notification with same ID
         android.util.Log.d("NotificationHelper", "Displaying completion notification ID: $notificationId")
         notificationManager.notify(notificationId, builder.build())
@@ -243,11 +269,15 @@ class DownloadNotificationHelper(private val context: Context) {
      * @param downloadId Unique download identifier
      * @param fileName Name of the file
      * @param errorMessage Error message (optional)
+     * @param vibrateEnabled Whether to vibrate on failure
+     * @param lightEnabled Whether to flash light on failure
      */
     fun showFailedNotification(
         downloadId: String,
         fileName: String,
-        errorMessage: String? = null
+        errorMessage: String? = null,
+        vibrateEnabled: Boolean = true,
+        lightEnabled: Boolean = true
     ) {
         android.util.Log.d("NotificationHelper", "showFailedNotification called: $fileName, Error: $errorMessage")
 
@@ -278,6 +308,17 @@ class DownloadNotificationHelper(private val context: Context) {
                 "Retry",
                 retryPendingIntent
             )
+
+        val defaultSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        builder.setSound(defaultSound, AudioManager.STREAM_NOTIFICATION)
+        
+        if (vibrateEnabled) {
+            builder.setVibrate(longArrayOf(0, 250, 250, 250))
+        }
+        
+        if (lightEnabled) {
+            builder.setLights(-0x10000, 1000, 1000)
+        }
 
         // Add content intent to open app
         val contentIntent = createOpenAppIntent()

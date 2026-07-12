@@ -26,11 +26,16 @@ class SettingsRepositoryImpl @Inject constructor(
         private const val KEY_HIDDEN_COMPLETED_IDS = "hidden_completed_ids"
         private const val KEY_NOTIFY_COMPLETION = "notify_download_completion"
         private const val KEY_NOTIFY_FAILURE = "notify_download_failure"
+        private const val KEY_VIBRATE = "notification_vibrate"
+        private const val KEY_LIGHT = "notification_light"
+        private const val KEY_COMPLETION_RINGTONE = "completion_ringtone"
+        private const val KEY_FAILURE_RINGTONE = "failure_ringtone"
         private const val KEY_PARALLEL_DOWNLOAD = "parallel_download"
         private const val KEY_AUTO_FETCH_URL = "auto_fetch_url"
         private const val KEY_ASK_DOWNLOAD_FOLDER = "ask_download_folder"
         private const val DEFAULT_VALUE = false
         private const val DEFAULT_PARALLEL_LIMIT = 3
+        private const val DEFAULT_RINGTONE = "DEFAULT"
     }
 
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -55,6 +60,22 @@ class SettingsRepositoryImpl @Inject constructor(
     private val _notifyFailure = MutableStateFlow(prefs.getBoolean(KEY_NOTIFY_FAILURE, true))
     private val notifyFailure = _notifyFailure.asStateFlow()
 
+    private val _vibrate = MutableStateFlow(prefs.getBoolean(KEY_VIBRATE, true))
+    private val vibrate = _vibrate.asStateFlow()
+
+    private val _light = MutableStateFlow(prefs.getBoolean(KEY_LIGHT, true))
+    private val light = _light.asStateFlow()
+
+    private val _completionRingtone = MutableStateFlow(prefs.getString(KEY_COMPLETION_RINGTONE, DEFAULT_RINGTONE) ?: DEFAULT_RINGTONE).also {
+        android.util.Log.d("SettingsRepository", "Init: _completionRingtone = ${it.value}")
+    }
+    private val completionRingtone = _completionRingtone.asStateFlow()
+
+    private val _failureRingtone = MutableStateFlow(prefs.getString(KEY_FAILURE_RINGTONE, DEFAULT_RINGTONE) ?: DEFAULT_RINGTONE).also {
+        android.util.Log.d("SettingsRepository", "Init: _failureRingtone = ${it.value}")
+    }
+    private val failureRingtone = _failureRingtone.asStateFlow()
+
     private val _parallelDownloadLimit = MutableStateFlow(prefs.getInt(KEY_PARALLEL_DOWNLOAD, DEFAULT_PARALLEL_LIMIT))
     private val parallelDownloadLimit = _parallelDownloadLimit.asStateFlow()
 
@@ -65,12 +86,25 @@ class SettingsRepositoryImpl @Inject constructor(
             KEY_HIDDEN_COMPLETED_IDS -> _hiddenCompletedIds.value = readHiddenIds()
             KEY_NOTIFY_COMPLETION -> _notifyCompletion.value = sp.getBoolean(KEY_NOTIFY_COMPLETION, true)
             KEY_NOTIFY_FAILURE -> _notifyFailure.value = sp.getBoolean(KEY_NOTIFY_FAILURE, true)
+            KEY_VIBRATE -> _vibrate.value = sp.getBoolean(KEY_VIBRATE, true)
+            KEY_LIGHT -> _light.value = sp.getBoolean(KEY_LIGHT, true)
+            KEY_COMPLETION_RINGTONE -> {
+                val newValue = sp.getString(KEY_COMPLETION_RINGTONE, DEFAULT_RINGTONE) ?: DEFAULT_RINGTONE
+                android.util.Log.d("SettingsRepository", "Listener triggered: KEY_COMPLETION_RINGTONE = $newValue")
+                _completionRingtone.value = newValue
+            }
+            KEY_FAILURE_RINGTONE -> {
+                val newValue = sp.getString(KEY_FAILURE_RINGTONE, DEFAULT_RINGTONE) ?: DEFAULT_RINGTONE
+                android.util.Log.d("SettingsRepository", "Listener triggered: KEY_FAILURE_RINGTONE = $newValue")
+                _failureRingtone.value = newValue
+            }
             KEY_PARALLEL_DOWNLOAD -> _parallelDownloadLimit.value = sp.getInt(KEY_PARALLEL_DOWNLOAD, DEFAULT_PARALLEL_LIMIT)
         }
     }
 
     init {
         prefs.registerOnSharedPreferenceChangeListener(listener)
+        android.util.Log.d("SettingsRepository", "Init: SharedPreference listener registered")
     }
 
     override fun observeAutoRemoveCompleted(): Flow<Boolean> = autoRemoveCompleted
@@ -88,6 +122,10 @@ class SettingsRepositoryImpl @Inject constructor(
 
     override fun observeNotifyDownloadCompletion(): Flow<Boolean> = notifyCompletion
     override fun observeNotifyDownloadFailure(): Flow<Boolean> = notifyFailure
+    override fun observeVibrate(): Flow<Boolean> = vibrate
+    override fun observeLight(): Flow<Boolean> = light
+    override fun observeCompletionRingtone(): Flow<String> = completionRingtone
+    override fun observeFailureRingtone(): Flow<String> = failureRingtone
 
     override fun getParallelDownloadLimit(): Int = prefs.getInt(KEY_PARALLEL_DOWNLOAD, DEFAULT_PARALLEL_LIMIT)
     override fun observeParallelDownloadLimit(): Flow<Int> = parallelDownloadLimit

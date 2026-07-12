@@ -8,8 +8,8 @@ package com.piumal.filedownloadmanager.ui.settings
  */
 data class SettingsUiState(
     // Section expanded states (General is always expanded)
-    val isDownloadSettingsExpanded: Boolean = false,
-    val isNotificationExpanded: Boolean = false,
+    val isDownloadSettingsExpanded: Boolean = true,
+    val isNotificationExpanded: Boolean = true,
     val isAdvancedSettingsExpanded: Boolean = false,
 
     // Dialog visibility states
@@ -32,8 +32,6 @@ data class SettingsUiState(
     val notificationsEnabled: Boolean = true,
     val notifyDownloadCompletion: Boolean = true,
     val notifyDownloadFailure: Boolean = true,
-    val completionRingtone: String = "Default",
-    val failureRingtone: String = "Default",
     val vibrateEnabled: Boolean = true,
     val lightEnabled: Boolean = true,
 

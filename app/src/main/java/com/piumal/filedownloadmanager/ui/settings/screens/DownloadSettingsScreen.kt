@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -47,41 +48,9 @@ fun DownloadSettingsScreen(
     viewModel: SettingsViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val context = LocalContext.current
-
-    // Folder picker launcher using Storage Access Framework
-    val folderPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree()
-    ) { uri: Uri? ->
-        uri?.let {
-            // Take persistable permission
-            val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                           Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            context.contentResolver.takePersistableUriPermission(uri, takeFlags)
-
-            // Convert URI to readable path
-            val folderPath = getReadablePath(uri)
-            viewModel.updateDefaultDownloadFolder(folderPath)
-        }
-    }
-
-    DownloadSettingsContent(
+    DownloadSettingsStandaloneContent(
         uiState = uiState,
-        onToggleAutoFetchUrl = viewModel::toggleAutoFetchUrl,
-        onToggleAskDownloadFolder = viewModel::toggleAskDownloadFolder,
-        onToggleAutoRemoveCompleted = viewModel::toggleAutoRemoveCompleted,
-        onToggleAutoRetryFailed = viewModel::toggleAutoRetryFailed,
-        onShowFolderPickerDialog = viewModel::showFolderPickerDialog,
-        onHideFolderPickerDialog = viewModel::hideFolderPickerDialog,
-        onConfirmFolderPicker = viewModel::updateDefaultDownloadFolder,
-        onBrowseFolder = {
-            // Launch folder picker with initial URI pointing to Downloads
-            val initialUri = Uri.parse("content://com.android.externalstorage.documents/document/primary:Download")
-            folderPickerLauncher.launch(initialUri)
-        },
-        onShowParallelDownloadDialog = viewModel::showParallelDownloadDialog,
-        onHideParallelDownloadDialog = viewModel::hideParallelDownloadDialog,
-        onConfirmParallelDownload = viewModel::setParallelDownload
+        viewModel = viewModel
     )
 }
 
@@ -137,12 +106,7 @@ fun DownloadSettingsContent(
         )
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState())
-    ) {
+    Column(modifier = modifier.fillMaxWidth()) {
         // 1. Default download folder
         SettingItem(
             title = "Default download folder",
@@ -194,6 +158,51 @@ fun DownloadSettingsContent(
             hasSwitch = true,
             isEnabled = uiState.autoRetryFailed,
             onToggle = onToggleAutoRetryFailed
+        )
+    }
+}
+
+@Composable
+private fun DownloadSettingsStandaloneContent(
+    uiState: SettingsUiState,
+    viewModel: SettingsViewModel,
+) {
+    val context = LocalContext.current
+
+    val folderPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        uri?.let {
+            val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            context.contentResolver.takePersistableUriPermission(uri, takeFlags)
+            val folderPath = getReadablePath(uri)
+            viewModel.updateDefaultDownloadFolder(folderPath)
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
+    ) {
+        DownloadSettingsContent(
+            uiState = uiState,
+            onToggleAutoFetchUrl = viewModel::toggleAutoFetchUrl,
+            onToggleAskDownloadFolder = viewModel::toggleAskDownloadFolder,
+            onToggleAutoRemoveCompleted = viewModel::toggleAutoRemoveCompleted,
+            onToggleAutoRetryFailed = viewModel::toggleAutoRetryFailed,
+            onShowFolderPickerDialog = viewModel::showFolderPickerDialog,
+            onHideFolderPickerDialog = viewModel::hideFolderPickerDialog,
+            onConfirmFolderPicker = viewModel::updateDefaultDownloadFolder,
+            onBrowseFolder = {
+                val initialUri = Uri.parse("content://com.android.externalstorage.documents/document/primary:Download")
+                folderPickerLauncher.launch(initialUri)
+            },
+            onShowParallelDownloadDialog = viewModel::showParallelDownloadDialog,
+            onHideParallelDownloadDialog = viewModel::hideParallelDownloadDialog,
+            onConfirmParallelDownload = viewModel::setParallelDownload
         )
     }
 }
