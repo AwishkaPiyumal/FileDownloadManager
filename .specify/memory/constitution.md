@@ -38,7 +38,7 @@ All asynchronous and background execution MUST use Kotlin Coroutines and Kotlin 
 A comprehensive test suite MUST be maintained. Business logic in Use Cases, ViewModels, and repositories MUST have unit tests using mock frameworks (such as MockK or Mockito) and kotlinx-coroutines-test for coroutine control. Compose UI components must have test coverage using Compose Test Rules. Every new feature or bug fix must include relevant test coverage. Integration and instrumentation tests must verify proper Room database and HTTP client operations.
 
 ## Platform Constraints and System Integration
-- **Android SDK Targets**: Target SDK 34+ and Minimum SDK 24+. Ensure modern Android permission requirements (e.g., post-Android 13 post-notifications, storage, clipboard access) are checked at runtime.
+- **Android SDK Targets**: Target SDK 35+ and Minimum SDK 24+. Ensure modern Android permission requirements (e.g., post-Android 13 post-notifications, storage, clipboard access) are checked at runtime.
 - **Storage and File Buffering**: Downloads must be streamed directly to files with a buffer size of at least 8KB to prevent memory exhaustion (OOM). Download files should reside in scoped storage or app-private storage.
 - **Network Transition Resilience**: The application must monitor network connectivity and support automatic download pause, resume, and fail-safe recovery on network drops.
 
@@ -52,4 +52,4 @@ This constitution governs all design, implementation, and review decisions for t
 
 All PRs/reviews must verify compliance with these core principles. Complexity must be justified. Use specs/ templates and plan files for runtime development guidance.
 
-**Version**: 1.0.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-07-13
+**Version**: 1.0.1 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-07-15
