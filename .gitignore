@@ -88,6 +88,8 @@ lint/tmp/
 # Mac
 .DS_Store
 
+.gemini/
+
 # Documentation files (will be added after project completion)
 ARCHITECTURE.md
 PROJECT_STRUCTURE.md
