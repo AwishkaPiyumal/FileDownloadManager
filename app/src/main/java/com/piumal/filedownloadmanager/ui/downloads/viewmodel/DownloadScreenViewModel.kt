@@ -6,6 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.piumal.filedownloadmanager.domain.model.DownloadConfig
 import com.piumal.filedownloadmanager.domain.model.DownloadItem
 import com.piumal.filedownloadmanager.domain.repository.DownloadRepository
+import com.piumal.filedownloadmanager.domain.usecase.download.OpenDownloadUseCase
+import com.piumal.filedownloadmanager.domain.usecase.download.ShareDownloadUseCase
+import com.piumal.filedownloadmanager.domain.usecase.download.RenameDownloadUseCase
+import com.piumal.filedownloadmanager.domain.usecase.download.DeleteDownloadUseCase
 import com.piumal.filedownloadmanager.domain.usecase.download.DeleteSelectedDownloadsUseCase
 import com.piumal.filedownloadmanager.domain.usecase.download.DownloadFilterType
 import com.piumal.filedownloadmanager.domain.usecase.download.FilterDownloadsUseCase
@@ -19,6 +23,10 @@ import com.piumal.filedownloadmanager.ui.downloads.components.SortOption
 import com.piumal.filedownloadmanager.ui.downloads.components.SortCategory
 import com.piumal.filedownloadmanager.ui.downloads.components.SortOrder
 import com.piumal.filedownloadmanager.domain.usecase.download.FileAlreadyExistsException
+import com.piumal.filedownloadmanager.domain.usecase.download.MoveToUseCase
+import com.piumal.filedownloadmanager.domain.usecase.download.RemoveFromListUseCase
+import com.piumal.filedownloadmanager.domain.usecase.download.ShowInFolderUseCase
+import com.piumal.filedownloadmanager.domain.usecase.download.ShowInfoUseCase
 import com.piumal.filedownloadmanager.domain.usecase.download.SortOption as DomainSortOption
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +35,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 import javax.inject.Inject
 
 /**
@@ -43,6 +53,14 @@ class DownloadScreenViewModel @Inject constructor(
     private val filterDownloadsUseCase: FilterDownloadsUseCase,
     private val startDownloadUseCase: StartDownloadUseCase,
     private val deleteSelectedDownloadsUseCase: DeleteSelectedDownloadsUseCase,
+    private val openDownloadUseCase: OpenDownloadUseCase,
+    private val shareDownloadUseCase: ShareDownloadUseCase,
+    private val renameDownloadUseCase: RenameDownloadUseCase,
+    private val deleteDownloadUseCase: DeleteDownloadUseCase,
+    private val showInFolderUseCase: ShowInFolderUseCase,
+    private val showInfoUseCase: ShowInfoUseCase,
+    private val moveToUseCase: MoveToUseCase,
+    private val removeFromListUseCase: RemoveFromListUseCase,
     private val downloadRepository: DownloadRepository,
     private val observeAutoRemoveCompletedUseCase: ObserveAutoRemoveCompletedUseCase,
     private val observeAutoRetryFailedUseCase: ObserveAutoRetryFailedUseCase,
@@ -311,7 +329,7 @@ class DownloadScreenViewModel @Inject constructor(
                     }
                     Log.d("DownloadScreenVM", "UI state updated with success")
                     // Clear success message after 3 seconds
-                    kotlinx.coroutines.delay(3000)
+                    kotlinx.coroutines.delay(3.seconds)
                     _uiState.update { it.copy(downloadSuccess = false, successMessage = null) }
                 }.onFailure { error ->
                     // Download failed to start
@@ -481,12 +499,154 @@ class DownloadScreenViewModel @Inject constructor(
         }
     }
 
+    fun onErrorConsumed() {
+        _uiState.update { it.copy(downloadError = null) }
+    }
+
     /**
      * Handle download item more options click
      */
-    fun onDownloadItemMoreClick(_item: DownloadItem) {
+    @Suppress("UNUSED_PARAMETER")
+    fun onDownloadItemMoreClick(item: DownloadItem) {
         // TODO: Show options menu for this item
         // This will be implemented when we add item actions
+    }
+
+    fun openDownload(id: String) {
+        viewModelScope.launch {
+            if (!runIfCompleted(id, "Open")) return@launch
+            openDownloadUseCase(id).onFailure { error ->
+                _uiState.update { it.copy(downloadError = error.message ?: "Failed to open file") }
+            }
+        }
+    }
+
+    fun shareDownload(id: String) {
+        viewModelScope.launch {
+            if (!runIfCompleted(id, "Share")) return@launch
+            shareDownloadUseCase(id).onFailure { error ->
+                _uiState.update { it.copy(downloadError = error.message ?: "Failed to share file") }
+            }
+        }
+    }
+
+    fun renameDownload(id: String, newName: String) {
+        viewModelScope.launch {
+            renameDownloadUseCase(id, newName)
+        }
+    }
+
+    fun deleteSingleDownload(id: String) {
+        viewModelScope.launch {
+            deleteDownloadUseCase(id)
+        }
+    }
+
+    fun showInFolder(id: String) {
+        viewModelScope.launch {
+            if (!runIfCompleted(id, "Show in folder")) return@launch
+            showInFolderUseCase(id).onFailure { error ->
+                val errorMessage = error.localizedMessage ?: "Failed to show file in folder"
+                _uiState.update { it.copy(downloadError = errorMessage) }
+            }
+        }
+    }
+
+    fun showInfo(id: String) {
+        viewModelScope.launch {
+            showInfoUseCase(id)
+                .onSuccess { item ->
+                    if (!item.isCompleted()) {
+                        _uiState.update { it.copy(downloadError = "Show info is available only for completed downloads") }
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                showInfoDialog = true,
+                                infoDownloadItem = item
+                            )
+                        }
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(downloadError = error.message ?: "Failed to load file info") }
+                }
+        }
+    }
+
+    fun moveTo(id: String) {
+        viewModelScope.launch {
+            // Placeholder: need destination path
+            moveToUseCase(id, "/default/path")
+        }
+    }
+
+    /**
+     * Request a move operation with an explicit destination path.
+     * This is called after a folder picker returns a chosen destination (as a string).
+     */
+    fun moveToWithDestination(id: String, destinationPath: String) {
+        viewModelScope.launch {
+            try {
+                val result = moveToUseCase(id, destinationPath)
+                result.onSuccess {
+                    _uiState.update { it.copy(downloadSuccess = true, successMessage = "Moved file") }
+                    kotlinx.coroutines.delay(2500.milliseconds)
+                    _uiState.update { it.copy(downloadSuccess = false, successMessage = null) }
+                }.onFailure { err ->
+                    Log.e("DownloadScreenVM", "Failed to move file: ${err.message}")
+                    _uiState.update { it.copy(downloadError = "Failed to move file: ${err.message}") }
+                }
+                } catch (e: Exception) {
+                Log.e("DownloadScreenVM", "Error during moveToWithDestination", e)
+                _uiState.update { it.copy(downloadError = e.message ?: "Failed to move file") }
+            }
+        }
+    }
+
+    fun removeFromList(id: String) {
+        viewModelScope.launch {
+            if (!runIfCompleted(id, "Remove from list")) return@launch
+            removeFromListUseCase(id).onFailure { error ->
+                _uiState.update { it.copy(downloadError = error.message ?: "Failed to remove item from list") }
+            }
+        }
+    }
+
+    fun dismissInfoDialog() {
+        _uiState.update { it.copy(showInfoDialog = false, infoDownloadItem = null) }
+    }
+
+    /**
+     * Show rename dialog UI for the provided download id and default name.
+     * The composable layer should observe uiState.showRenameDialog and show the dialog.
+     */
+    fun showRenameDialogFor(id: String, defaultName: String) {
+        _uiState.update { it.copy(showRenameDialog = true, renameTargetId = id, renameDefaultName = defaultName) }
+    }
+
+    fun dismissRenameDialog() {
+        _uiState.update { it.copy(showRenameDialog = false, renameTargetId = null, renameDefaultName = null) }
+    }
+
+    fun confirmRename(newName: String) {
+        val targetId = _uiState.value.renameTargetId
+        if (targetId == null) return
+        viewModelScope.launch {
+            try {
+                val result = renameDownloadUseCase(targetId, newName)
+                result.onSuccess {
+                    _uiState.update { it.copy(showRenameDialog = false, renameTargetId = null, renameDefaultName = null, downloadSuccess = true, successMessage = "Renamed file") }
+                    kotlinx.coroutines.delay(2500.milliseconds)
+                    _uiState.update { it.copy(downloadSuccess = false, successMessage = null) }
+                }.onFailure { err ->
+                    Log.e("DownloadScreenVM", "Rename failed: ${err.message}")
+                    _uiState.update { it.copy(downloadError = "Failed to rename: ${err.message}") }
+                }
+            } catch (e: Exception) {
+                Log.e("DownloadScreenVM", "Error renaming file", e)
+                _uiState.update { it.copy(downloadError = e.message ?: "Failed to rename file") }
+            }
+        }
     }
 
     // =============================================
@@ -670,7 +830,7 @@ class DownloadScreenViewModel @Inject constructor(
                         )
                     }
                     // Clear success message after delay
-                    kotlinx.coroutines.delay(3000)
+                    kotlinx.coroutines.delay(3.seconds)
                     _uiState.update { it.copy(downloadSuccess = false, successMessage = null) }
                 },
                 onFailure = { error ->
@@ -741,6 +901,19 @@ class DownloadScreenViewModel @Inject constructor(
         retriedFailedIds.retainAll(failedIds)
         Log.d("DownloadScreenVM", "RetriedFailedIds after cleanup: $retriedFailedIds")
     }
+
+    private fun runIfCompleted(id: String, actionLabel: String): Boolean {
+        val item = _uiState.value.allDownloads.firstOrNull { it.id == id }
+        if (item == null) {
+            _uiState.update { it.copy(downloadError = "$actionLabel failed: item not found") }
+            return false
+        }
+        if (!item.isCompleted()) {
+            _uiState.update { it.copy(downloadError = "$actionLabel is available only when the download is completed") }
+            return false
+        }
+        return true
+    }
 }
 
 /**
@@ -755,6 +928,11 @@ data class DownloadScreenUiState(
     val showSortSheet: Boolean = false,
     val showAddDownloadDialog: Boolean = false,
     val showFileExistsDialog: Boolean = false,
+    val showRenameDialog: Boolean = false,
+    val renameTargetId: String? = null,
+    val renameDefaultName: String? = null,
+    val showInfoDialog: Boolean = false,
+    val infoDownloadItem: DownloadItem? = null,
     val showDeleteSelectedDialog: Boolean = false,
     val existingFileName: String? = null,
     val pendingDownloadConfig: DownloadConfig? = null,

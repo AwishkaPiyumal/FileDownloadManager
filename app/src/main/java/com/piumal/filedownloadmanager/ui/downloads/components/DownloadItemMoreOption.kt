@@ -17,7 +17,8 @@ fun DownloadItemMoreOption(
     expanded: Boolean,
     onDismiss: () -> Unit,
     onMenuItemClick: (DownloadItemMoreMenuAction) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
 
     DropdownMenu(
@@ -29,7 +30,7 @@ fun DownloadItemMoreOption(
             text = {
                 Text(
                     text = "Open",
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if(enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     style = MaterialTheme.typography.labelMedium
                 )
             },
@@ -37,6 +38,7 @@ fun DownloadItemMoreOption(
                 onMenuItemClick(DownloadItemMoreMenuAction.Open)
                 onDismiss()
             },
+            enabled = enabled,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
             modifier = Modifier.height(32.dp)
         )
@@ -44,7 +46,7 @@ fun DownloadItemMoreOption(
             text = {
                 Text(
                     text = "Show in Folder",
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if(enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     style = MaterialTheme.typography.labelMedium
                 )
             },
@@ -52,6 +54,7 @@ fun DownloadItemMoreOption(
                 onMenuItemClick(DownloadItemMoreMenuAction.ShowInFolder)
                 onDismiss()
             },
+            enabled = enabled,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
             modifier = Modifier.height(32.dp)
         )
@@ -59,7 +62,7 @@ fun DownloadItemMoreOption(
             text = {
                 Text(
                     text = "Share file",
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if(enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     style = MaterialTheme.typography.labelMedium
                 )
             },
@@ -67,6 +70,7 @@ fun DownloadItemMoreOption(
                 onMenuItemClick(DownloadItemMoreMenuAction.ShareFile)
                 onDismiss()
             },
+            enabled = enabled,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
             modifier = Modifier.height(32.dp)
         )
@@ -79,7 +83,7 @@ fun DownloadItemMoreOption(
             text = {
                 Text(
                     text = "Show info",
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if(enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     style = MaterialTheme.typography.labelMedium
                 )
             },
@@ -87,6 +91,7 @@ fun DownloadItemMoreOption(
                 onMenuItemClick(DownloadItemMoreMenuAction.ShowInfo)
                 onDismiss()
             },
+            enabled = enabled,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
             modifier = Modifier.height(32.dp)
         )
@@ -100,7 +105,7 @@ fun DownloadItemMoreOption(
             text = {
                 Text(
                     text = "Rename file",
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if(enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     style = MaterialTheme.typography.labelMedium
                 )
             },
@@ -108,6 +113,7 @@ fun DownloadItemMoreOption(
                 onMenuItemClick(DownloadItemMoreMenuAction.RenameFile)
                 onDismiss()
             },
+            enabled = enabled,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
             modifier = Modifier.height(32.dp)
         )
@@ -115,7 +121,7 @@ fun DownloadItemMoreOption(
             text = {
                 Text(
                     text = "Move to...",
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if(enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     style = MaterialTheme.typography.labelMedium
                 )
             },
@@ -123,6 +129,7 @@ fun DownloadItemMoreOption(
                 onMenuItemClick(DownloadItemMoreMenuAction.Moveto)
                 onDismiss()
             },
+            enabled = enabled,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
             modifier = Modifier.height(32.dp)
         )
@@ -130,7 +137,7 @@ fun DownloadItemMoreOption(
             text = {
                 Text(
                     text = "Delete file",
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if(enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     style = MaterialTheme.typography.labelMedium
                 )
             },
@@ -138,6 +145,7 @@ fun DownloadItemMoreOption(
                 onMenuItemClick(DownloadItemMoreMenuAction.Deletefile)
                 onDismiss()
             },
+            enabled = enabled,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
             modifier = Modifier.height(32.dp)
         )
@@ -145,7 +153,7 @@ fun DownloadItemMoreOption(
             text = {
                 Text(
                     text = "Remove from list",
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if(enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     style = MaterialTheme.typography.labelMedium
                 )
             },
@@ -153,6 +161,7 @@ fun DownloadItemMoreOption(
                 onMenuItemClick(DownloadItemMoreMenuAction.Removefromlist)
                 onDismiss()
             },
+            enabled = enabled,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
             modifier = Modifier.height(32.dp)
         )

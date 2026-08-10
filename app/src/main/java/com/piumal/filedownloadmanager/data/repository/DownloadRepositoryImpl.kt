@@ -1,6 +1,11 @@
 package com.piumal.filedownloadmanager.data.repository
 
+import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.Intent
 import android.content.Context
+import android.media.MediaScannerConnection
+import android.webkit.MimeTypeMap
 import com.piumal.filedownloadmanager.data.download.DownloadManager
 import com.piumal.filedownloadmanager.data.download.DownloadService
 import com.piumal.filedownloadmanager.data.local.dao.DownloadDao
@@ -9,12 +14,14 @@ import com.piumal.filedownloadmanager.domain.model.DownloadItem
 import com.piumal.filedownloadmanager.domain.model.DownloadStatus
 import com.piumal.filedownloadmanager.domain.repository.DownloadRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
+import androidx.core.content.FileProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import com.piumal.filedownloadmanager.data.repository.DownloadFileOperations
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -36,9 +43,6 @@ class DownloadRepositoryImpl @Inject constructor(
     private val downloadDao: DownloadDao,
     private val downloadManager: DownloadManager
 ) : DownloadRepository {
-
-    // Coroutine scope for background operations
-    private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun getAllDownloads(): Flow<List<DownloadItem>> {
         return downloadDao.getAllDownloads().map { entities ->
@@ -66,6 +70,101 @@ class DownloadRepositoryImpl @Inject constructor(
         downloadDao.updateDownload(entity)
     }
 
+    override suspend fun deleteDownloadFile(id: String): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val download = requireExistingDownload(id)
+            val file = File(download.filePath)
+            if (file.exists() && !DownloadFileOperations.deletePhysicalFile(file.absolutePath)) {
+                throw IllegalStateException("Failed to physically delete file: ${file.absolutePath}")
+            }
+            downloadDao.deleteDownload(id)
+        }
+    }
+
+    override suspend fun moveDownloadFile(id: String, destinationPath: String): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val download = requireExistingDownload(id)
+            val originalPath = download.filePath
+
+            // Perform physical file move using foolproof I/O stream method
+            val target = DownloadFileOperations.movePhysicalFile(originalPath, destinationPath)
+
+            // CRITICAL: Update local database with new file path
+            val updatedDownload = download.copy(filePath = target.absolutePath)
+            updateDownload(updatedDownload)
+
+            // Notify Android media scanner of the changes
+            MediaScannerConnection.scanFile(context, arrayOf(originalPath, target.absolutePath), null, null)
+        }
+    }
+
+
+    override suspend fun openDownload(id: String): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val download = requireExistingDownload(id)
+            val file = File(download.filePath)
+            require(file.exists()) { "File does not exist: ${file.absolutePath}" }
+
+            val uri = fileProviderUri(file)
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, mimeTypeFor(file) ?: "*/*")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                clipData = ClipData.newRawUri(file.name, uri)
+            }
+
+            val chooser = Intent.createChooser(intent, "Open with").apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(chooser)
+        }.recoverCatching { throwable ->
+            if (throwable is ActivityNotFoundException) {
+                throw IllegalStateException("No app found to open this file", throwable)
+            }
+            throw throwable
+        }
+    }
+
+    override suspend fun shareDownload(id: String, chooserTitle: String?): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val download = requireExistingDownload(id)
+            val file = File(download.filePath)
+            require(file.exists()) { "File does not exist: ${file.absolutePath}" }
+
+            val uri = fileProviderUri(file)
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = mimeTypeFor(file) ?: "*/*"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                clipData = ClipData.newRawUri(file.name, uri)
+            }
+
+            val chooser = Intent.createChooser(intent, chooserTitle ?: "Share").apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(chooser)
+        }.recoverCatching { throwable ->
+            if (throwable is ActivityNotFoundException) {
+                throw IllegalStateException("No app found to share this file", throwable)
+            }
+            throw throwable
+        }
+    }
+
+    override suspend fun showInFolder(id: String): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            try {
+                val intent = Intent(android.app.DownloadManager.ACTION_VIEW_DOWNLOADS).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                throw Exception("Failed to open downloads folder")
+            }
+        }
+    }
+
     override suspend fun deleteDownload(id: String) {
         downloadDao.deleteDownload(id)
     }
@@ -85,7 +184,7 @@ class DownloadRepositoryImpl @Inject constructor(
     override suspend fun pauseDownload(id: String) {
         // Send pause action to DownloadService to stop the download job and update status
         // The service handles database update and notification update for consistency
-        val intent = android.content.Intent(context, DownloadService::class.java).apply {
+        val intent = Intent(context, DownloadService::class.java).apply {
             action = DownloadService.ACTION_PAUSE_DOWNLOAD
             putExtra(DownloadService.EXTRA_DOWNLOAD_ID, id)
         }
@@ -143,5 +242,21 @@ class DownloadRepositoryImpl @Inject constructor(
             startDownload(updatedDownload)
         }
     }
+
+    private suspend fun requireExistingDownload(id: String): DownloadItem {
+        return getDownloadById(id) ?: throw IllegalArgumentException("Download not found: $id")
+    }
+
+    private fun mimeTypeFor(file: File): String? {
+        val ext = file.extension
+        if (ext.isBlank()) return null
+        return MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext.lowercase())
+    }
+
+    private fun fileProviderUri(file: File) = FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.fileprovider",
+        file
+    )
 }
 

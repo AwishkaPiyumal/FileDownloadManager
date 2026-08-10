@@ -6,6 +6,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -15,6 +19,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.piumal.filedownloadmanager.domain.usecase.download.DownloadFilterType
 import com.piumal.filedownloadmanager.ui.downloads.components.AddDownloadDialog
 import com.piumal.filedownloadmanager.ui.downloads.components.DeleteSelectedConfirmDialog
+import com.piumal.filedownloadmanager.ui.downloads.components.DownloadInfoDialog
 import com.piumal.filedownloadmanager.ui.downloads.components.DownloadFAB
 import com.piumal.filedownloadmanager.ui.downloads.components.DownloadList
 import com.piumal.filedownloadmanager.ui.downloads.components.FileExistsDialog
@@ -22,6 +27,9 @@ import com.piumal.filedownloadmanager.ui.downloads.components.SelectionHeader
 import com.piumal.filedownloadmanager.ui.downloads.components.SortBottomSheet
 import com.piumal.filedownloadmanager.ui.downloads.viewmodel.DownloadScreenViewModel
 import com.piumal.filedownloadmanager.ui.downloads.viewmodel.MoreOptionsViewModel
+import com.piumal.filedownloadmanager.ui.downloads.components.RenameDownloadDialog
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 
 /**
@@ -38,6 +46,7 @@ fun DownloadScreen(
 ) {
     // Collect UI state from ViewModel
     val uiState by viewModel.uiState.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("All", "Active", "Completed")
@@ -85,6 +94,21 @@ fun DownloadScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // Local state used for move-to folder picker
+        var pendingMoveId by remember { mutableStateOf<String?>(null) }
+
+        // Folder picker launcher — returns a Uri representing the picked tree
+        val folderPickerLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.OpenDocumentTree()
+        ) { uri: Uri? ->
+            if (uri != null && pendingMoveId != null) {
+                // Delegate to ViewModel to perform move using the picked destination (stringified Uri)
+                viewModel.moveToWithDestination(pendingMoveId!!, uri.toString())
+                pendingMoveId = null
+            } else {
+                pendingMoveId = null
+            }
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -174,6 +198,19 @@ fun DownloadScreen(
                         onRetryClick = { downloadId ->
                             viewModel.retryDownload(downloadId)
                         },
+                        onOpen = { id -> viewModel.openDownload(id) },
+                        onShare = { id -> viewModel.shareDownload(id) },
+                        // Show rename dialog (collect new name) instead of performing immediate rename
+                        onRename = { id, name -> viewModel.showRenameDialogFor(id, name) },
+                        onDelete = { id -> viewModel.deleteSingleDownload(id) },
+                        onShowInFolder = { id -> viewModel.showInFolder(id) },
+                        onShowInfo = { id -> viewModel.showInfo(id) },
+                        // Launch folder picker and forward result to ViewModel
+                        onMoveTo = { id ->
+                            pendingMoveId = id
+                            folderPickerLauncher.launch(null)
+                        },
+                        onRemoveFromList = { id -> viewModel.removeFromList(id) },
                         isSelectionMode = uiState.isSelectionMode,
                         selectedIds = uiState.selectedDownloadIds,
                         onLongPress = { downloadId ->
@@ -231,6 +268,23 @@ fun DownloadScreen(
         )
     }
 
+    // Rename Dialog (when user chooses Rename from item menu)
+    if (uiState.showRenameDialog && uiState.renameDefaultName != null) {
+        RenameDownloadDialog(
+            currentName = uiState.renameDefaultName!!,
+            onDismiss = { viewModel.dismissRenameDialog() },
+            onConfirm = { newName -> viewModel.confirmRename(newName) }
+        )
+    }
+
+    // Show Info Dialog
+    if (uiState.showInfoDialog && uiState.infoDownloadItem != null) {
+        DownloadInfoDialog(
+            downloadItem = uiState.infoDownloadItem!!,
+            onDismiss = { viewModel.dismissInfoDialog() }
+        )
+    }
+
     // Delete Selected Confirmation Dialog
     if (uiState.showDeleteSelectedDialog) {
         DeleteSelectedConfirmDialog(
@@ -252,17 +306,12 @@ fun DownloadScreen(
         }
     }
 
-    // Show error snackbar
     val errorMessage = uiState.downloadError
-    if (errorMessage != null) {
-        Snackbar(
-            modifier = Modifier.padding(16.dp),
-            containerColor = MaterialTheme.colorScheme.errorContainer
-        ) {
-            Text(
-                text = errorMessage,
-                color = MaterialTheme.colorScheme.onErrorContainer
-            )
+    LaunchedEffect(errorMessage) {
+        if (errorMessage != null) {
+            Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
+            delay(2500.milliseconds)
+            viewModel.onErrorConsumed()
         }
     }
 }

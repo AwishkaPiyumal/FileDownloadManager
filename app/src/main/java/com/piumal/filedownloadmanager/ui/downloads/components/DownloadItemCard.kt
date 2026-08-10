@@ -25,6 +25,7 @@ import kotlin.math.pow
  * Follows Material Design 3 guidelines and Google Play Store policies
  *
  * @param downloadItem Download data to display
+ * @param actionsEnabled Whether the context menu actions are enabled
  * @param onMoreClick Callback when more options button is clicked
  * @param onPauseClick Callback when pause button is clicked
  * @param onResumeClick Callback when resume button is clicked
@@ -40,10 +41,19 @@ import kotlin.math.pow
 fun DownloadItemCard(
     modifier: Modifier = Modifier,
     downloadItem: DownloadItem,
+    actionsEnabled: Boolean = false,
     onMoreClick: (DownloadItem) -> Unit,
     onPauseClick: (String) -> Unit = {},
     onResumeClick: (String) -> Unit = {},
     onRetryClick: (String) -> Unit = {},
+    onOpen: (String) -> Unit = {},
+    onShare: (String) -> Unit = {},
+    onRename: (String, String) -> Unit = { id, name -> },
+    onDelete: (String) -> Unit = {},
+    onShowInFolder: (String) -> Unit = {},
+    onShowInfo: (String) -> Unit = {},
+    onMoveTo: (String) -> Unit = {},
+    onRemoveFromList: (String) -> Unit = {},
     isSelectionMode: Boolean = false,
     isSelected: Boolean = false,
     onLongPress: (String) -> Unit = {},
@@ -123,35 +133,21 @@ fun DownloadItemCard(
                     onDismiss = { showMoreMenu = false },
                     onMenuItemClick = { action ->
                         when(action){
-                            is DownloadItemMoreMenuAction.Open -> {
-                                // Handle Open action
-                            }
-                            is DownloadItemMoreMenuAction.ShowInFolder -> {
-                                // Handle Show in Folder action
-                            }
-                            is DownloadItemMoreMenuAction.ShareFile -> {
-                                // Handle Share File action
-                            }
-                            is DownloadItemMoreMenuAction.ShowInfo -> {
-                                // Handle Show Info action
-                            }
-                            is DownloadItemMoreMenuAction.RenameFile -> {
-                                // Handle Rename File action
-                            }
-                            is DownloadItemMoreMenuAction.Moveto -> {
-                                // Handle Move to action
-                            }
-                            is DownloadItemMoreMenuAction.Deletefile -> {
-                                // Handle Delete file action
-                            }
-                            is DownloadItemMoreMenuAction.Removefromlist -> {
-                                // Handle Remove from list action
-                            }
+                            is DownloadItemMoreMenuAction.Open -> onOpen(downloadItem.id)
+                            is DownloadItemMoreMenuAction.ShowInFolder -> onShowInFolder(downloadItem.id)
+                            is DownloadItemMoreMenuAction.ShareFile -> onShare(downloadItem.id)
+                            is DownloadItemMoreMenuAction.ShowInfo -> onShowInfo(downloadItem.id)
+                            is DownloadItemMoreMenuAction.RenameFile -> onRename(downloadItem.id, downloadItem.fileName)
+                            is DownloadItemMoreMenuAction.Moveto -> onMoveTo(downloadItem.id)
+                            is DownloadItemMoreMenuAction.Deletefile -> onDelete(downloadItem.id)
+                            is DownloadItemMoreMenuAction.Removefromlist -> onRemoveFromList(downloadItem.id)
                         }
-                    }
+                    },
+                    enabled = actionsEnabled
                 )
             }
         }
+
 
         Spacer(modifier = Modifier.height(8.dp))
 
