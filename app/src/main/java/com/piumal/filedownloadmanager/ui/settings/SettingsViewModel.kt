@@ -230,18 +230,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun saveBoolean(key: String, value: Boolean) {
-        sharedPreferences.edit().putBoolean(key, value).commit()  // Changed from apply() to commit()
+        sharedPreferences.edit().putBoolean(key, value).apply()
     }
 
     private fun saveInt(key: String, value: Int) {
-        sharedPreferences.edit().putInt(key, value).commit()  // Changed from apply() to commit()
+        sharedPreferences.edit().putInt(key, value).apply()
     }
 
-     private fun saveString(key: String, value: String) {
-         val success = sharedPreferences.edit().putString(key, value).commit()
-         android.util.Log.d("SettingsViewModel", "saveString: key=$key, value=$value, success=$success")
-         // Verify it was saved
-         val saved = sharedPreferences.getString(key, "NOT_FOUND")
-         android.util.Log.d("SettingsViewModel", "Verification: $key saved as: $saved")
-     }
+    private fun saveString(key: String, value: String) {
+        sharedPreferences.edit().putString(key, value).apply()
+    }
 }

@@ -42,11 +42,11 @@ fun DownloadList(
     onShowInfo: (String) -> Unit = {},
     onCopyTo: (String) -> Unit = {},
     onRemoveFromList: (String) -> Unit = {},
+    modifier: Modifier = Modifier,
     isSelectionMode: Boolean = false,
     selectedIds: Set<String> = emptySet(),
     onLongPress: (String) -> Unit = {},
-    onItemClick: (String) -> Unit = {},
-    modifier: Modifier = Modifier
+    onItemClick: (String) -> Unit = {}
 ) {
     if (downloads.isEmpty()) {
         // Empty state

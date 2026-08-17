@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.piumal.filedownloadmanager.ui.settings.SettingsUiState
 import com.piumal.filedownloadmanager.ui.settings.SettingsViewModel
@@ -81,11 +82,11 @@ fun DownloadSettingsContent(
     onShowFolderPickerDialog: () -> Unit,
     onHideFolderPickerDialog: () -> Unit,
     onConfirmFolderPicker: (String) -> Unit,
-    onBrowseFolder: () -> Unit = {},
     onShowParallelDownloadDialog: () -> Unit,
     onHideParallelDownloadDialog: () -> Unit,
     onConfirmParallelDownload: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onBrowseFolder: () -> Unit = {}
 ) {
     // Show Folder Picker Dialog
     if (uiState.showFolderPickerDialog) {
@@ -197,7 +198,7 @@ private fun DownloadSettingsStandaloneContent(
             onHideFolderPickerDialog = viewModel::hideFolderPickerDialog,
             onConfirmFolderPicker = viewModel::updateDefaultDownloadFolder,
             onBrowseFolder = {
-                val initialUri = Uri.parse("content://com.android.externalstorage.documents/document/primary:Download")
+                val initialUri = "content://com.android.externalstorage.documents/document/primary:Download".toUri()
                 folderPickerLauncher.launch(initialUri)
             },
             onShowParallelDownloadDialog = viewModel::showParallelDownloadDialog,
@@ -220,10 +221,10 @@ fun DownloadSettingsScreenPreview() {
             onShowFolderPickerDialog = {},
             onHideFolderPickerDialog = {},
             onConfirmFolderPicker = {},
-            onBrowseFolder = {},
             onShowParallelDownloadDialog = {},
             onHideParallelDownloadDialog = {},
-            onConfirmParallelDownload = {}
+            onConfirmParallelDownload = {},
+            onBrowseFolder = {}
         )
     }
 }
@@ -241,10 +242,10 @@ fun DownloadSettingsScreenDarkPreview() {
             onShowFolderPickerDialog = {},
             onHideFolderPickerDialog = {},
             onConfirmFolderPicker = {},
-            onBrowseFolder = {},
             onShowParallelDownloadDialog = {},
             onHideParallelDownloadDialog = {},
-            onConfirmParallelDownload = {}
+            onConfirmParallelDownload = {},
+            onBrowseFolder = {}
         )
     }
 }
