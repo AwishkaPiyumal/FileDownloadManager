@@ -52,6 +52,10 @@ class MoreOptionsViewModel @Inject constructor(
     private val _selectionModeEvent = MutableSharedFlow<Boolean>()
     val selectionModeEvent: SharedFlow<Boolean> = _selectionModeEvent.asSharedFlow()
 
+    // Event flow for triggering navigation
+    private val _navigateTo = MutableSharedFlow<String>()
+    val navigateTo: SharedFlow<String> = _navigateTo.asSharedFlow()
+
     // Event flow for triggering delete action in DownloadScreen
     private val _deleteSelectedEvent = MutableSharedFlow<Unit>()
     val deleteSelectedEvent: SharedFlow<Unit> = _deleteSelectedEvent.asSharedFlow()
@@ -185,9 +189,8 @@ class MoreOptionsViewModel @Inject constructor(
     /**
      * Show help/tutorial on how to download
      */
-    private fun handleHowToDownload() {
-        // TODO: Implement navigation to help screen or show tutorial
-        // Navigate to help screen or show a dialog with instructions
+    private suspend fun handleHowToDownload() {
+        _navigateTo.emit("help?focus=how_to_download")
     }
 
     /**

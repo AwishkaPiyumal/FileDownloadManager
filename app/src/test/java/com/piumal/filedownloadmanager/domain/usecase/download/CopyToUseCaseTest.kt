@@ -4,22 +4,22 @@ import com.piumal.filedownloadmanager.domain.model.DownloadItem
 import com.piumal.filedownloadmanager.domain.model.DownloadStatus
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-class MoveToUseCaseTest {
+class CopyToUseCaseTest {
 
     @Test
-    fun `move to updates file path and deletes original file`() = runBlocking {
+    fun `copy to updates file path and retains original file`() = runBlocking {
         val repository = FileOperationTestRepository()
-        val useCase = MoveToUseCaseImpl(repository)
-        val source = File.createTempFile("move_usecase", ".txt")
+        val useCase = CopyToUseCaseImpl(repository)
+        val source = File.createTempFile("copy_usecase", ".txt")
         source.writeText("payload")
-        val destinationDir = File(System.getProperty("java.io.tmpdir"), "move_usecase_dest_${System.nanoTime()}")
+        val destinationDir = File(System.getProperty("java.io.tmpdir"), "copy_usecase_dest_${System.nanoTime()}")
         destinationDir.mkdirs()
-        val destinationPath = File(destinationDir, "final.txt").absolutePath
+        val destinationPath = destinationDir.absolutePath
+        val expectedFile = File(destinationPath, source.name)
         val item = DownloadItem(
             id = "42",
             fileName = source.name,
@@ -31,15 +31,16 @@ class MoveToUseCaseTest {
         )
         repository.insertDownload(item)
 
-        val result = useCase("42", destinationPath)
+        val result = useCase(item, destinationPath)
 
         assertTrue(result.isSuccess)
-        val updated = repository.getDownloadById("42")
-        assertTrue(updated != null)
-        assertEquals(destinationPath, updated!!.filePath)
-        assertFalse(source.exists())
-        assertTrue(File(destinationPath).exists())
-        assertEquals("payload", File(destinationPath).readText())
+        
+        // Verify original file still exists
+        assertTrue(source.exists())
+        assertEquals("payload", source.readText())
+        
+        // Verify new file exists
+        assertTrue(expectedFile.exists())
+        assertEquals("payload", expectedFile.readText())
     }
 }
-

@@ -17,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
@@ -27,15 +28,24 @@ private const val PROJECT_URL = "https://github.com/AwishkaPiyumal/FileDownloadM
 private const val ISSUES_URL = "https://github.com/AwishkaPiyumal/FileDownloadManager/issues"
 
 @Composable
-fun SupportScreen() {
+fun SupportScreen(focus: String? = null) {
     val uriHandler = LocalUriHandler.current
+    val scrollState = rememberScrollState()
+
+    // Scroll to section if focus is requested
+    LaunchedEffect(focus) {
+        if (focus == "how_to_download") {
+            // Scroll to the end of the list where the new item will be
+            scrollState.animateScrollTo(scrollState.maxValue)
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .align(Alignment.TopStart)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -65,6 +75,16 @@ fun SupportScreen() {
                     "Project source code and updates are available on GitHub.",
                     "Open an issue for bugs, crashes, or feature requests.",
                     "Check the README for setup and project information."
+                )
+            )
+            
+            // NEW SECTION: How to download?
+            SupportInfoCard(
+                title = "How to download?",
+                items = listOf(
+                    "Step 1: Copy the link of the file you want to download.",
+                    "Step 2: Paste the link into the download manager.",
+                    "Step 3: Click the Download button to start the process."
                 )
             )
 

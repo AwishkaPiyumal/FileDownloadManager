@@ -94,19 +94,19 @@ fun DownloadScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Local state used for move-to folder picker
-        var pendingMoveId by remember { mutableStateOf<String?>(null) }
+        // Local state used for copy-to folder picker
+        var pendingCopyId by remember { mutableStateOf<String?>(null) }
 
         // Folder picker launcher — returns a Uri representing the picked tree
         val folderPickerLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.OpenDocumentTree()
         ) { uri: Uri? ->
-            if (uri != null && pendingMoveId != null) {
-                // Delegate to ViewModel to perform move using the picked destination (stringified Uri)
-                viewModel.moveToWithDestination(pendingMoveId!!, uri.toString())
-                pendingMoveId = null
+            if (uri != null && pendingCopyId != null) {
+                // Delegate to ViewModel to perform copy using the picked destination (stringified Uri)
+                viewModel.copyToWithDestination(pendingCopyId!!, uri.toString())
+                pendingCopyId = null
             } else {
-                pendingMoveId = null
+                pendingCopyId = null
             }
         }
         Column(
@@ -206,8 +206,8 @@ fun DownloadScreen(
                         onShowInFolder = { id -> viewModel.showInFolder(id) },
                         onShowInfo = { id -> viewModel.showInfo(id) },
                         // Launch folder picker and forward result to ViewModel
-                        onMoveTo = { id ->
-                            pendingMoveId = id
+                        onCopyTo = { id ->
+                            pendingCopyId = id
                             folderPickerLauncher.launch(null)
                         },
                         onRemoveFromList = { id -> viewModel.removeFromList(id) },

@@ -1,5 +1,7 @@
 package com.piumal.filedownloadmanager.data.repository
 
+import android.content.Context
+import android.os.Environment
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -22,66 +24,58 @@ object DownloadFileOperations {
 
     /**
      * Move a file to [destinationFolderPath] using foolproof I/O stream fallback.
-     *
-     * Follows this logic:
-     * 1. Get the source file
-     * 2. Construct destination directory and ensure it exists
-     * 3. Create destination file path with source filename
-     * 4. Try direct rename first (same filesystem)
-     * 5. Fall back to I/O stream copy with sync + delete
-     * 6. Verify file was moved successfully
-     *
-     * @param sourcePath Path to the source file
-     * @param destinationFolderPath Path to destination folder (or full file path)
-     * @return The File object pointing to the new location
-     * @throws IllegalStateException if move fails after retries
+     * Includes a guaranteed writable fallback to the public Downloads directory for Scoped Storage compatibility.
      */
-    fun movePhysicalFile(sourcePath: String, destinationFolderPath: String): File {
+    fun movePhysicalFile(
+        sourcePath: String,
+        destinationFolderPath: String,
+        context: Context? = null,
+        fallbackDirFactory: () -> File = { Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) }
+    ): File {
         // 1. Get the source file
         val sourceFile = File(sourcePath)
-        require(sourceFile.exists()) { "Source file does not exist: ${sourceFile.absolutePath}" }
+        if (!sourceFile.exists()) throw Exception("Source file missing: ${sourceFile.absolutePath}")
 
-        // 2. Construct the destination FILE (not just the folder)
-        val destDir = File(destinationFolderPath)
-        if (!destDir.exists()) {
-            if (!destDir.mkdirs()) {
-                throw IllegalStateException("Failed to create destination directory: ${destDir.absolutePath}")
+        // 2. Define target
+        var targetDir = File(destinationFolderPath)
+
+        // If target directory is not writable (Scoped Storage), try public Downloads directory fallback
+        // then try internal app-specific filesDir as a guaranteed fallback.
+        if (!targetDir.canWrite()) {
+            val publicDownloadsDir = fallbackDirFactory() // defaults to public Downloads
+            targetDir = File(publicDownloadsDir, "FileDownloadManager_Moved")
+
+            // If still not writable, use internal app-specific storage as absolute final fallback
+            if (!targetDir.canWrite() && context != null) {
+                targetDir = File(context.filesDir, "FileDownloadManager_Moved")
+            }
+
+            if (!targetDir.exists()) targetDir.mkdirs()
+        }
+
+        if (!targetDir.exists()) {
+            if (!targetDir.mkdirs()) {
+                throw IllegalStateException("Failed to create destination directory: ${targetDir.absolutePath}")
             }
         }
 
-        // If destinationFolderPath is a directory, use source filename; otherwise treat as file path
-        val destFile = if (destDir.isDirectory) {
-            File(destDir, sourceFile.name)
+        val destFile = if (targetDir.isDirectory) {
+            File(targetDir, sourceFile.name)
         } else {
-            destDir
-        }
-
-        // Ensure parent directory exists
-        val destParent = destFile.parentFile
-        if (destParent != null && !destParent.exists()) {
-            if (!destParent.mkdirs()) {
-                throw IllegalStateException("Failed to create parent directory: ${destParent.absolutePath}")
-            }
+            targetDir
         }
 
         return try {
-            // 3. Check if files are on the same filesystem - try rename first
+            // Try direct rename
             val sameFilesystem = sourceFile.parentFile?.absolutePath == destFile.parentFile?.absolutePath
             if (sameFilesystem && sourceFile.renameTo(destFile)) {
-                // Direct rename succeeded
                 destFile
             } else {
-                // 4. Fall back to I/O stream copy with foolproof error handling
                 moveUsingIoStreams(sourceFile, destFile)
             }
-        } catch (security: SecurityException) {
-            throw IllegalStateException("Permission denied while moving file: ${sourceFile.absolutePath}", security)
-        } catch (io: Exception) {
-            // Clean up partial file if copy failed
-            if (destFile.exists()) {
-                destFile.delete()
-            }
-            throw IllegalStateException("Failed to move file from ${sourceFile.absolutePath} to ${destFile.absolutePath}", io)
+        } catch (e: Exception) {
+            if (destFile.exists()) destFile.delete()
+            throw Exception("Move failed: ${e.message}")
         }
     }
 

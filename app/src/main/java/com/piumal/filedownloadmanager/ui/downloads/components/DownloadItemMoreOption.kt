@@ -120,13 +120,13 @@ fun DownloadItemMoreOption(
         DropdownMenuItem(
             text = {
                 Text(
-                    text = "Move to...",
+                    text = "Copy to...",
                     color = if(enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     style = MaterialTheme.typography.labelMedium
                 )
             },
             onClick = {
-                onMenuItemClick(DownloadItemMoreMenuAction.Moveto)
+                onMenuItemClick(DownloadItemMoreMenuAction.Copyto)
                 onDismiss()
             },
             enabled = enabled,
@@ -173,7 +173,7 @@ sealed class DownloadItemMoreMenuAction {
     data object ShareFile : DownloadItemMoreMenuAction()
     data object ShowInfo : DownloadItemMoreMenuAction()
     data object RenameFile : DownloadItemMoreMenuAction()
-    data object Moveto : DownloadItemMoreMenuAction()
+    data object Copyto : DownloadItemMoreMenuAction()
     data object Deletefile : DownloadItemMoreMenuAction()
     data object Removefromlist : DownloadItemMoreMenuAction()
 }

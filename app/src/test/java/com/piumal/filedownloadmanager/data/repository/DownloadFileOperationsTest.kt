@@ -34,11 +34,20 @@ class DownloadFileOperationsTest {
         source.writeText("moved content")
         val destinationDir = File(System.getProperty("java.io.tmpdir"), "move_dest_${System.nanoTime()}")
         destinationDir.mkdirs()
+        // Make it not writable to trigger the fallback logic
+        destinationDir.setReadOnly()
         val destinationPath = File(destinationDir, "renamed.txt").absolutePath
+        val fallbackDir = File(System.getProperty("java.io.tmpdir"), "fallback_dest_${System.nanoTime()}")
 
-        val target = DownloadFileOperations.movePhysicalFile(source.absolutePath, destinationPath)
+        val target = DownloadFileOperations.movePhysicalFile(
+            source.absolutePath, 
+            destinationPath, 
+            null, 
+            { fallbackDir }
+        )
 
-        assertEquals(destinationPath, target.absolutePath)
+        // The target should be in the fallback directory because destinationDir is not writable
+        assertTrue(target.absolutePath.contains(fallbackDir.absolutePath))
         assertTrue(target.exists())
         assertFalse(source.exists())
         assertEquals("moved content", target.readText())

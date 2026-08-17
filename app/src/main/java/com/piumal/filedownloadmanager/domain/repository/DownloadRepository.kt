@@ -46,10 +46,10 @@ interface DownloadRepository {
     suspend fun deleteDownloadFile(id: String): Result<Unit>
 
     /**
-     * Move the file to a new destination, then update the database record's filePath.
-     * This is used by the "Move to..." action.
+     * Copy the file to a new destination.
+     * This is used by the "Copy to..." action.
      */
-    suspend fun moveDownloadFile(id: String, destinationPath: String): Result<Unit>
+    suspend fun copyDownload(item: DownloadItem, destinationFolderPath: String): Result<Unit>
 
     /**
      * Open a completed download using a FileProvider-backed Intent.

@@ -50,9 +50,9 @@ object UseCaseModule {
 
     @Provides
     @Singleton
-    fun provideMoveToUseCase(
+    fun provideCopyToUseCase(
         repository: DownloadRepository
-    ): MoveToUseCase = MoveToUseCaseImpl(repository)
+    ): CopyToUseCase = CopyToUseCaseImpl(repository)
 
     @Provides
     @Singleton

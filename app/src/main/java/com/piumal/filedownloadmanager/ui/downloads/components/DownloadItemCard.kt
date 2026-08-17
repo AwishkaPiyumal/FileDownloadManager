@@ -52,7 +52,7 @@ fun DownloadItemCard(
     onDelete: (String) -> Unit = {},
     onShowInFolder: (String) -> Unit = {},
     onShowInfo: (String) -> Unit = {},
-    onMoveTo: (String) -> Unit = {},
+    onCopyTo: (String) -> Unit = {},
     onRemoveFromList: (String) -> Unit = {},
     isSelectionMode: Boolean = false,
     isSelected: Boolean = false,
@@ -138,7 +138,7 @@ fun DownloadItemCard(
                             is DownloadItemMoreMenuAction.ShareFile -> onShare(downloadItem.id)
                             is DownloadItemMoreMenuAction.ShowInfo -> onShowInfo(downloadItem.id)
                             is DownloadItemMoreMenuAction.RenameFile -> onRename(downloadItem.id, downloadItem.fileName)
-                            is DownloadItemMoreMenuAction.Moveto -> onMoveTo(downloadItem.id)
+                            is DownloadItemMoreMenuAction.Copyto -> onCopyTo(downloadItem.id)
                             is DownloadItemMoreMenuAction.Deletefile -> onDelete(downloadItem.id)
                             is DownloadItemMoreMenuAction.Removefromlist -> onRemoveFromList(downloadItem.id)
                         }

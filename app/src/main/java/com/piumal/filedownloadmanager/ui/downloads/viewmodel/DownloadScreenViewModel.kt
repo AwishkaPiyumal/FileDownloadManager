@@ -23,7 +23,7 @@ import com.piumal.filedownloadmanager.ui.downloads.components.SortOption
 import com.piumal.filedownloadmanager.ui.downloads.components.SortCategory
 import com.piumal.filedownloadmanager.ui.downloads.components.SortOrder
 import com.piumal.filedownloadmanager.domain.usecase.download.FileAlreadyExistsException
-import com.piumal.filedownloadmanager.domain.usecase.download.MoveToUseCase
+import com.piumal.filedownloadmanager.domain.usecase.download.CopyToUseCase
 import com.piumal.filedownloadmanager.domain.usecase.download.RemoveFromListUseCase
 import com.piumal.filedownloadmanager.domain.usecase.download.ShowInFolderUseCase
 import com.piumal.filedownloadmanager.domain.usecase.download.ShowInfoUseCase
@@ -59,7 +59,7 @@ class DownloadScreenViewModel @Inject constructor(
     private val deleteDownloadUseCase: DeleteDownloadUseCase,
     private val showInFolderUseCase: ShowInFolderUseCase,
     private val showInfoUseCase: ShowInfoUseCase,
-    private val moveToUseCase: MoveToUseCase,
+    private val copyToUseCase: CopyToUseCase,
     private val removeFromListUseCase: RemoveFromListUseCase,
     private val downloadRepository: DownloadRepository,
     private val observeAutoRemoveCompletedUseCase: ObserveAutoRemoveCompletedUseCase,
@@ -573,32 +573,40 @@ class DownloadScreenViewModel @Inject constructor(
         }
     }
 
-    fun moveTo(id: String) {
+    fun copyTo(id: String) {
         viewModelScope.launch {
-            // Placeholder: need destination path
-            moveToUseCase(id, "/default/path")
+            // Need to retrieve the item to pass it to the copyToUseCase as required by the new interface
+            val item = _uiState.value.allDownloads.firstOrNull { it.id == id }
+            if (item != null) {
+                // Placeholder: need destination path. This needs to be coordinated with a file picker in the UI layer.
+                copyToUseCase(item, "/default/path")
+            }
         }
     }
 
     /**
-     * Request a move operation with an explicit destination path.
+     * Request a copy operation with an explicit destination path.
      * This is called after a folder picker returns a chosen destination (as a string).
      */
-    fun moveToWithDestination(id: String, destinationPath: String) {
+    fun copyToWithDestination(id: String, destinationPath: String) {
         viewModelScope.launch {
             try {
-                val result = moveToUseCase(id, destinationPath)
-                result.onSuccess {
-                    _uiState.update { it.copy(downloadSuccess = true, successMessage = "Moved file") }
-                    kotlinx.coroutines.delay(2500.milliseconds)
-                    _uiState.update { it.copy(downloadSuccess = false, successMessage = null) }
-                }.onFailure { err ->
-                    Log.e("DownloadScreenVM", "Failed to move file: ${err.message}")
-                    _uiState.update { it.copy(downloadError = "Failed to move file: ${err.message}") }
+                val item = _uiState.value.allDownloads.firstOrNull { it.id == id }
+                if (item != null) {
+                    copyToUseCase(item, destinationPath).onSuccess {
+                        _uiState.update { it.copy(downloadSuccess = true, successMessage = "Copied file") }
+                        kotlinx.coroutines.delay(2500.milliseconds)
+                        _uiState.update { it.copy(downloadSuccess = false, successMessage = null) }
+                    }.onFailure { err ->
+                        val errorMessage = err.message ?: err.toString()
+                        Log.e("DownloadScreenVM", "Failed to copy file: $errorMessage")
+                        _uiState.update { it.copy(downloadError = "Failed to copy file: $errorMessage") }
+                    }
                 }
-                } catch (e: Exception) {
-                Log.e("DownloadScreenVM", "Error during moveToWithDestination", e)
-                _uiState.update { it.copy(downloadError = e.message ?: "Failed to move file") }
+            } catch (e: Exception) {
+                val errorMessage = e.message ?: e.toString()
+                Log.e("DownloadScreenVM", "Error during copyToWithDestination", e)
+                _uiState.update { it.copy(downloadError = "Copy failed: $errorMessage") }
             }
         }
     }

@@ -81,20 +81,41 @@ class DownloadRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun moveDownloadFile(id: String, destinationPath: String): Result<Unit> = withContext(Dispatchers.IO) {
+    override suspend fun copyDownload(item: DownloadItem, destinationFolderPath: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
-            val download = requireExistingDownload(id)
-            val originalPath = download.filePath
-
-            // Perform physical file move using foolproof I/O stream method
-            val target = DownloadFileOperations.movePhysicalFile(originalPath, destinationPath)
-
-            // CRITICAL: Update local database with new file path
-            val updatedDownload = download.copy(filePath = target.absolutePath)
-            updateDownload(updatedDownload)
-
-            // Notify Android media scanner of the changes
-            MediaScannerConnection.scanFile(context, arrayOf(originalPath, target.absolutePath), null, null)
+            val sourceFile = java.io.File(item.filePath)
+            if (!sourceFile.exists()) throw Exception("Source file not found")
+            try {
+                if (destinationFolderPath.startsWith("content://")) {
+                    // Handle Scoped Storage / SAF URI
+                    val uri = android.net.Uri.parse(destinationFolderPath)
+                    val documentFile = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, uri)
+                        ?: throw Exception("Invalid destination folder selected")
+                    // Create the new file in the selected directory
+                    val newFile = documentFile.createFile("*/*", sourceFile.name)
+                        ?: throw Exception("Failed to create file in destination")
+                    // Copy streams using ContentResolver
+                    context.contentResolver.openOutputStream(newFile.uri)?.use { output ->
+                        sourceFile.inputStream().use { input ->
+                            input.copyTo(output)
+                        }
+                    } ?: throw Exception("Failed to open output stream")
+                } else {
+                    // Handle Standard File I/O (Fallback)
+                    val destDir = java.io.File(destinationFolderPath)
+                    if (!destDir.exists()) destDir.mkdirs()
+                    val destFile = java.io.File(destDir, sourceFile.name)
+                    sourceFile.inputStream().use { input ->
+                        destFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // Return the exact localized message so we know what went wrong if it fails again
+                throw Exception("Copy error: ${e.localizedMessage}")
+            }
+            Unit
         }
     }
 

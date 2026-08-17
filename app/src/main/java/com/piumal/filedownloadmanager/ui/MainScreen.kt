@@ -77,6 +77,13 @@ fun MainScreen(
         }
     }
 
+    // Observe navigation events from MoreOptionsViewModel
+    LaunchedEffect(Unit) {
+        moreOptionsViewModel.navigateTo.collect { route ->
+            navController.navigate(route)
+        }
+    }
+
 
     ModalNavigationDrawer(
         drawerState = drawerState,

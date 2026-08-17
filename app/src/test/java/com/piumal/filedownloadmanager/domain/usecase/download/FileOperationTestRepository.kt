@@ -31,7 +31,9 @@ class FileOperationTestRepository : DownloadRepository {
 
     override suspend fun moveDownloadFile(id: String, destinationPath: String): Result<Unit> = runCatching {
         val download = getDownloadById(id) ?: throw IllegalArgumentException("Download not found: $id")
-        val target = DownloadFileOperations.movePhysicalFile(download.filePath, destinationPath)
+        val target = DownloadFileOperations.movePhysicalFile(download.filePath, destinationPath, null) {
+            java.io.File(System.getProperty("java.io.tmpdir"), "fallback")
+        }
         updateDownload(download.copy(filePath = target.absolutePath))
     }
 
