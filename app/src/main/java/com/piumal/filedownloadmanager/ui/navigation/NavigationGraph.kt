@@ -45,17 +45,10 @@ fun NavigationGraph(
         composable(Screen.Settings.route) {
             SettingsScreen()
         }
-        composable(
-            route = "${Screen.Support.route}?focus={focus}",
-            arguments = listOf(androidx.navigation.navArgument("focus") {
-                type = androidx.navigation.NavType.StringType
-                nullable = true
-                defaultValue = null
-            })
-        ) { backStackEntry ->
-            val focus = backStackEntry.arguments?.getString("focus")
-            SupportScreen(focus = focus)
+        composable(Screen.Support.route) {
+            SupportScreen()
         }
+
 
         composable(Screen.About.route){
             AboutScreen()

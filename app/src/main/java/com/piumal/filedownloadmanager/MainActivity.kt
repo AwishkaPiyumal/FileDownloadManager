@@ -57,7 +57,7 @@ class MainActivity : ComponentActivity() {
     }
 
     // Launcher for MANAGE_EXTERNAL_STORAGE settings (Android 11+)
-    private val manageStorageLauncher = registerForActivityResult(
+   /* private val manageStorageLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { _ ->
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -67,7 +67,7 @@ class MainActivity : ComponentActivity() {
                 Log.w("MainActivity", "MANAGE_EXTERNAL_STORAGE permission denied")
             }
         }
-    }
+    }*/
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -78,8 +78,7 @@ class MainActivity : ComponentActivity() {
             // Request notification permission for Android 13+
             requestNotificationPermission()
 
-            // Request storage permission
-            requestStoragePermission()
+
 
             setContent {
                 // Observe dark mode setting from ThemeManager
@@ -132,26 +131,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestStoragePermission() {
-        when {
-            // Android 11+ (API 30+): Need MANAGE_EXTERNAL_STORAGE
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
-                if (!Environment.isExternalStorageManager()) {
-                    Log.d("MainActivity", "Requesting MANAGE_EXTERNAL_STORAGE permission")
-                    try {
-                        val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-                        intent.data = Uri.parse("package:$packageName")
-                        manageStorageLauncher.launch(intent)
-                    } catch (e: Exception) {
-                        // Fallback for devices that don't support the specific intent
-                        val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                        manageStorageLauncher.launch(intent)
-                    }
-                } else {
-                    Log.d("MainActivity", "MANAGE_EXTERNAL_STORAGE already granted")
-                }
-            }
+       when {
+           // Android 11+ (API 30+): Need MANAGE_EXTERNAL_STORAGE
+           Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {        Log.d("MainActivity", "Android 11+: No runtime storage permissions needed")
+       }
             // Android 10 (API 29): requestLegacyExternalStorage handles this
-            Build.VERSION.SDK_INT == Build.VERSION_CODES.Q -> {
+             Build.VERSION.SDK_INT == Build.VERSION_CODES.Q -> {
                 Log.d("MainActivity", "Using requestLegacyExternalStorage for Android 10")
             }
             // Android 9 and below (API <= 28): Need WRITE_EXTERNAL_STORAGE
@@ -172,6 +157,6 @@ class MainActivity : ComponentActivity() {
                     Log.d("MainActivity", "Storage permissions already granted")
                 }
             }
-        }
-    }
+       }
+   }
 }

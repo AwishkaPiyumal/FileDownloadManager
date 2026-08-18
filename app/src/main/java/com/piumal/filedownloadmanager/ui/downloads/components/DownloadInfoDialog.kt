@@ -36,8 +36,8 @@ fun DownloadInfoDialog(
                 InfoRow(label = "Name", value = downloadItem.fileName)
                 InfoRow(label = "Path", value = downloadItem.filePath)
                 InfoRow(label = "Status", value = downloadItem.status.name)
-                InfoRow(label = "Downloaded", value = "${downloadItem.downloadedSize} bytes")
-                InfoRow(label = "Total size", value = "${downloadItem.totalSize} bytes")
+                InfoRow(label = "Downloaded", value = "${downloadItem.downloadedSize/(1024*1024)} MB")
+                InfoRow(label = "Total size", value = "${downloadItem.totalSize/(1024*1024)} MB")
                 InfoRow(label = "Created", value = DateFormat.getDateTimeInstance().format(Date(downloadItem.createdAt)))
             }
         }

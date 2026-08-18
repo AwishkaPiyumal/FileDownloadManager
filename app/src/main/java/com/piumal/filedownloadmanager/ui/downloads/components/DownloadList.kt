@@ -30,6 +30,7 @@ import com.piumal.filedownloadmanager.domain.model.DownloadItem
 @Composable
 fun DownloadList(
     downloads: List<DownloadItem>,
+    modifier: Modifier = Modifier,
     onMoreClick: (DownloadItem) -> Unit,
     onPauseClick: (String) -> Unit = {},
     onResumeClick: (String) -> Unit = {},
@@ -42,7 +43,6 @@ fun DownloadList(
     onShowInfo: (String) -> Unit = {},
     onCopyTo: (String) -> Unit = {},
     onRemoveFromList: (String) -> Unit = {},
-    modifier: Modifier = Modifier,
     isSelectionMode: Boolean = false,
     selectedIds: Set<String> = emptySet(),
     onLongPress: (String) -> Unit = {},

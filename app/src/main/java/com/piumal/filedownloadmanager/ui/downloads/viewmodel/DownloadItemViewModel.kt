@@ -51,41 +51,7 @@ class DownloadItemViewModel @Inject constructor(
         )
     }
 
-    /**
-     * Handle pause/resume action
-     */
-    fun onPauseResumeClick() {
-        // TODO: Implement pause/resume logic in repository
-        onDismissOptionsMenu()
-    }
 
-    /**
-     * Handle cancel action
-     */
-    fun onCancelClick() {
-        // TODO: Implement cancel logic in repository
-        onDismissOptionsMenu()
-    }
-
-    /**
-     * Handle delete action
-     */
-    fun onDeleteClick() {
-        // TODO: Implement delete logic in repository
-        onDismissOptionsMenu()
-    }
-
-    /**
-     * Handle open file action (for completed downloads)
-     */
-    fun onOpenFileClick() {
-        // TODO: Implement open file logic
-        onDismissOptionsMenu()
-    }
-
-    /**
-     * Format file size based on download status
-     */
     private fun formatSize(item: DownloadItem): String {
         return if (item.isCompleted()) {
             formatFileSizeUseCase(item.totalSize)
