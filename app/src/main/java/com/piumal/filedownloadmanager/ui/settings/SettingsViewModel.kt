@@ -1,9 +1,12 @@
+@file:Suppress("unused")
+
 package com.piumal.filedownloadmanager.ui.settings
 
 import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.piumal.filedownloadmanager.domain.util.DownloadStoragePaths
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -57,7 +60,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     useMobileNetwork = sharedPreferences.getBoolean(KEY_USE_MOBILE_NETWORK, false),
                     darkMode = sharedPreferences.getBoolean(KEY_DARK_MODE, false),
                     // Download Settings
-                    defaultDownloadFolder = sharedPreferences.getString(KEY_DEFAULT_DOWNLOAD_FOLDER, "Download/FileDownloadManager") ?: "Download/FileDownloadManager",
+                    defaultDownloadFolder = sharedPreferences.getString(KEY_DEFAULT_DOWNLOAD_FOLDER, DownloadStoragePaths.DEFAULT_UI_FOLDER_LABEL) ?: DownloadStoragePaths.DEFAULT_UI_FOLDER_LABEL,
                     autoFetchUrl = sharedPreferences.getBoolean(KEY_AUTO_FETCH_URL, true),
                     askDownloadFolder = sharedPreferences.getBoolean(KEY_ASK_DOWNLOAD_FOLDER, false),
                     parallelFileDownload = sharedPreferences.getInt(KEY_PARALLEL_DOWNLOAD, 3),

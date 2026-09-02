@@ -52,7 +52,7 @@
 - [X] T032 Update UI components (`DownloadItemMoreOption`, `DownloadItemCard`) to rename `Moveto` action to `Copyto` per prompt
 - [X] T033 Implement new `copyDownload` logic in `DownloadRepositoryImpl` without source deletion or database updates per prompt
 - [X] T034 Refactor `DownloadScreenViewModel` to handle `CopyTo` events and cleanup `MoveTo` logic per prompt
-- [ ] T035 Update UI text "Move to..." to "Copy to..." in all relevant components per prompt
+- [X] T035 Update UI text "Move to..." to "Copy to..." in all relevant components per prompt
 
 ## Phase 12: Convergence
 - [X] T036 Rename `MoveToUseCaseTest.kt` to `CopyToUseCaseTest.kt` and update to test correct Copy behavior (retaining source file) per SC-001 (partial)
@@ -60,3 +60,14 @@
 ## Phase 13: Convergence
 - [X] T037 Wire "How to download?" menu item to navigate to `Screen.Support.route` with `focus=how_to_download` argument and implement additive UI section in `SupportScreen` per user request (missing)
 
+## Phase 14: Convergence - File Existence Fixes
+- [X] T038 Refactor DownloadRepositoryImpl.openDownload and shareDownload to use a safer check for file existence via FileProvider or ContentResolver to support Scoped Storage per user requirement (HIGH)
+- [X] T039 Synchronize filePath in Room Database with actual storage path including 'FileDownloadManager' directory in StartDownloadUseCase and DownloadManager per user requirement (HIGH)
+
+## Phase 15: Convergence - Security Audit Remediation
+- [X] T040 Implement dynamic MIME-type allowlist validation in `ContentValidator.kt` to replace static extension blocklist per security audit (HIGH)
+- [X] T041 Update `DownloadManager.kt` to enforce strict `Content-Type` header validation against the allowlist before/during download initiation, throwing `SecurityException` on violation per security audit (HIGH)
+- [X] T042 Audit and refactor `StartDownloadUseCase`, URL parsing, and any `Content-Disposition` header handling to ensure universal, strict invocation of `FileNameSanitizer` before any file I/O operations per security audit (HIGH)
+
+## Phase 16: Convergence - Magic Number Security Remediation
+- [X] T043 Implement file signature ("Magic Number") validation in `DownloadManager.kt` streaming pipeline to detect and block malicious signatures (e.g., MZ, #!) upon the first buffer read, aborting and deleting the partial file per security request (CRITICAL)

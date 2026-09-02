@@ -23,6 +23,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.piumal.filedownloadmanager.R
 
 import com.piumal.filedownloadmanager.domain.model.DownloadConfig
+import com.piumal.filedownloadmanager.domain.util.DownloadStoragePaths
 import com.piumal.filedownloadmanager.ui.downloads.viewmodel.AddDownloadViewModel
 
 
@@ -67,9 +68,9 @@ fun AddDownloadDialog(
                         "/storage/${'$'}{split[0]}/${'$'}{split[1]}"
                     }
                 } else {
-                    uri.path ?: "Download/FileDownloadManager"
+                    uri.path ?: DownloadStoragePaths.DEFAULT_UI_FOLDER_LABEL
                 }
-            }.getOrDefault("Download/FileDownloadManager")
+            }.getOrDefault(DownloadStoragePaths.DEFAULT_UI_FOLDER_LABEL)
 
             viewModel.onFilePathChanged(folderPath)
 

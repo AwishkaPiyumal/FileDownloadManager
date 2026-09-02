@@ -8,7 +8,7 @@ import com.piumal.filedownloadmanager.data.local.entity.DownloadEntity
 /**
  * Room Database for Download Manager
  *
- * Stores download history and state
+ * Stores encrypted download history and state
  * Google Play Policy: Transparent data storage
  *
  * @author File Download Manager Team
@@ -26,7 +26,7 @@ abstract class DownloadDatabase : RoomDatabase() {
     abstract fun downloadDao(): DownloadDao
 
     companion object {
-        const val DATABASE_NAME = "download_manager_db"
+        const val DATABASE_NAME = "download_manager_secure_db"
     }
 }
 

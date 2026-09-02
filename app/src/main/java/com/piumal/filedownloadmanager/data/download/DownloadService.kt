@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.piumal.filedownloadmanager.data.download.DownloadManager
 import com.piumal.filedownloadmanager.data.download.DownloadNotificationHelper
 import com.piumal.filedownloadmanager.data.download.DownloadQueueManager
@@ -195,16 +196,6 @@ class DownloadService : Service() {
                 if (downloadId != null) cancelDownload(downloadId)
             }
             ACTION_RESUME_ALL_PENDING -> {
-                if (!isForegroundStarted) {
-                    try {
-                        createNotificationChannel()
-                        val notification = createForegroundNotification()
-                        startForeground(FOREGROUND_NOTIFICATION_ID, notification)
-                        isForegroundStarted = true
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error starting foreground for resume all", e)
-                    }
-                }
                 resumeAllPendingDownloads()
             }
         }
@@ -215,6 +206,15 @@ class DownloadService : Service() {
 
     override fun onDestroy() {
         Log.d(TAG, "Service destroyed")
+        NotificationManagerCompat.from(this).cancel(FOREGROUND_NOTIFICATION_ID)
+        if (isForegroundStarted) {
+            try {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } catch (_: Exception) {
+                @Suppress("DEPRECATION")
+                stopForeground(true)
+            }
+        }
         serviceScope.cancel()
         super.onDestroy()
     }
@@ -369,16 +369,7 @@ class DownloadService : Service() {
                                     try {
                                         val notificationId = notificationHelper.getNotificationIdForDownload(downloadId)
                                         Log.d(TAG, "Cancelling notification ID: $notificationId")
-
-                                        // Remove foreground notification completely
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                                            stopForeground(STOP_FOREGROUND_REMOVE)
-                                        } else {
-                                            @Suppress("DEPRECATION")
-                                            stopForeground(true) // true = remove notification
-                                        }
-
-                                        // Also cancel any lingering notification
+                                        stopForeground(STOP_FOREGROUND_REMOVE)
                                         notificationManager.cancel(notificationId)
                                         Log.d(TAG, "Notification removed from panel successfully")
                                     } catch (e: Exception) {
@@ -462,7 +453,7 @@ class DownloadService : Service() {
             downloadDao.updateStatus(downloadId, DownloadStatus.FAILED.name, System.currentTimeMillis())
             downloadQueueManager.onDownloadComplete(downloadId)
         }
-        notificationManager.cancel(downloadId.hashCode())
+        notificationManager.cancel(notificationHelper.getNotificationIdForDownload(downloadId))
         checkAndStopService()
     }
 
@@ -484,6 +475,17 @@ class DownloadService : Service() {
                     checkAndStopService()
                     return@launch
                 }
+
+                if (!isForegroundStarted) {
+                    try {
+                        createNotificationChannel()
+                        startForeground(FOREGROUND_NOTIFICATION_ID, createForegroundNotification())
+                        isForegroundStarted = true
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error starting foreground for pending downloads", e)
+                    }
+                }
+
                 pendingDownloads.forEach { download ->
                     Log.d(TAG, "Retrying: ${download.id}")
                     downloadDao.updateStatus(download.id, DownloadStatus.QUEUED.name, System.currentTimeMillis())
@@ -501,12 +503,8 @@ class DownloadService : Service() {
             Log.d(TAG, "No active downloads, stopping service")
             isForegroundStarted = false
             foregroundDownloadId = null
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                stopForeground(STOP_FOREGROUND_DETACH)
-            } else {
-                @Suppress("DEPRECATION")
-                stopForeground(false)
-            }
+            NotificationManagerCompat.from(this).cancel(FOREGROUND_NOTIFICATION_ID)
+            stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
     }

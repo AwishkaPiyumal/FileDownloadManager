@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package com.piumal.filedownloadmanager.ui.settings.screens
 
 import android.content.Intent
@@ -22,6 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.piumal.filedownloadmanager.domain.util.DownloadStoragePaths
 import com.piumal.filedownloadmanager.ui.settings.SettingsUiState
 import com.piumal.filedownloadmanager.ui.settings.SettingsViewModel
 import com.piumal.filedownloadmanager.ui.settings.components.SettingItem
@@ -68,7 +71,7 @@ private fun getReadablePath(uri: Uri): String {
             "/storage/${split[0]}/${split[1]}"
         }
     } else {
-        uri.path ?: "Download/FileDownloadManager"
+        uri.path ?: DownloadStoragePaths.DEFAULT_UI_FOLDER_LABEL
     }
 }
 

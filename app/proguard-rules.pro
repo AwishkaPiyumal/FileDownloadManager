@@ -19,3 +19,9 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# SQLCipher and AndroidX Security
+-keep class net.sqlcipher.** { *; }
+-dontwarn net.sqlcipher.**
+-keep class androidx.security.crypto.** { *; }
+-dontwarn androidx.security.crypto.**

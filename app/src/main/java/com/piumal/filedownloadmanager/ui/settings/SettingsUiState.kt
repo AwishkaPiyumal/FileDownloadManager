@@ -1,5 +1,7 @@
 package com.piumal.filedownloadmanager.ui.settings
 
+import com.piumal.filedownloadmanager.domain.util.DownloadStoragePaths
+
 /**
  * SettingsUiState
  *
@@ -21,7 +23,7 @@ data class SettingsUiState(
     val darkMode: Boolean = false,
 
     // Download settings
-    val defaultDownloadFolder: String = "Download/FileDownloadManager",
+    val defaultDownloadFolder: String = DownloadStoragePaths.DEFAULT_UI_FOLDER_LABEL,
     val autoFetchUrl: Boolean = true,
     val askDownloadFolder: Boolean = false,
     val parallelFileDownload: Int = 3,

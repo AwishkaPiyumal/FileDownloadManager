@@ -1,10 +1,24 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("kotlin-kapt")
     id("com.google.dagger.hilt.android")
+    id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
 }
+
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use { load(it) }
+    }
+}
+
+fun String.asBuildConfigLiteral(): String = replace("\\", "\\\\").replace("\"", "\\\"")
+
+fun localProperty(name: String): String = localProperties.getProperty(name, "")
 
 android {
     namespace = "com.piumal.filedownloadmanager"
@@ -16,6 +30,9 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
+
+        buildConfigField("String", "API_BASE_URL", "\"${localProperty("API_BASE_URL").asBuildConfigLiteral()}\"")
+        buildConfigField("String", "API_KEY", "\"${localProperty("API_KEY").asBuildConfigLiteral()}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -39,6 +56,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -69,6 +87,8 @@ dependencies {
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     kapt("androidx.room:room-compiler:2.6.1")
+    implementation("net.zetetic:android-database-sqlcipher:4.5.4")
+    implementation("androidx.security:security-crypto:1.0.0")
 
     // Retrofit - Network
     implementation("com.squareup.retrofit2:retrofit:2.9.0")

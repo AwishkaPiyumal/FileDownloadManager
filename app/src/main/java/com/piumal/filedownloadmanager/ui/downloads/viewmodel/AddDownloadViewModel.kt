@@ -1,8 +1,11 @@
+@file:Suppress("unused")
+
 package com.piumal.filedownloadmanager.ui.downloads.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.piumal.filedownloadmanager.domain.model.DownloadConfig
+import com.piumal.filedownloadmanager.domain.util.DownloadStoragePaths
 import com.piumal.filedownloadmanager.domain.usecase.util.ExtractFileNameUseCase
 import com.piumal.filedownloadmanager.domain.usecase.util.GetClipboardUrlUseCase
 import com.piumal.filedownloadmanager.domain.usecase.settings.IsAutoFetchUrlEnabledUseCase
@@ -34,7 +37,7 @@ class AddDownloadViewModel @Inject constructor(
     private val isAskDownloadFolderEnabledUseCase: IsAskDownloadFolderEnabledUseCase
 ) : ViewModel() {
 
-    private val defaultDownloadPath: String = "/storage/emulated/0/Download/FileDownloadManager"
+    private val defaultDownloadPath: String = DownloadStoragePaths.getDownloadDirectory().absolutePath
 
     // UI State
     private val _uiState = MutableStateFlow(AddDownloadUiState())
@@ -151,7 +154,7 @@ class AddDownloadViewModel @Inject constructor(
  */
 data class AddDownloadUiState(
     val url: String = "",
-    val filePath: String = "/storage/emulated/0/Download/FileDownloadManager",
+    val filePath: String = DownloadStoragePaths.getDownloadDirectory().absolutePath,
     val fileName: String = "",
     val scheduleTime: Long? = null,
     val showSchedulePicker: Boolean = false

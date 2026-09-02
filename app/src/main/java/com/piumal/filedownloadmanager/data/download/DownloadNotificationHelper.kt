@@ -137,8 +137,6 @@ class DownloadNotificationHelper(private val context: Context) {
         percentage: Int,
         status: DownloadStatus
     ) {
-        android.util.Log.d("NotificationHelper", "showProgressNotification called: $fileName, $percentage%, Status: $status")
-
         val notificationId = getNotificationId(downloadId)
 
         // Format size text
@@ -148,8 +146,6 @@ class DownloadNotificationHelper(private val context: Context) {
             DownloadStatus.PAUSED -> "Paused • $percentage% • $sizeText"
             else -> "$percentage% • $sizeText"
         }
-
-        android.util.Log.d("NotificationHelper", "Notification ID: $notificationId, Text: $statusText")
 
         // Build notification
         val builder = NotificationCompat.Builder(context, CHANNEL_ID_PROGRESS)
@@ -227,7 +223,6 @@ class DownloadNotificationHelper(private val context: Context) {
         vibrateEnabled: Boolean = true,
         lightEnabled: Boolean = true
     ) {
-        android.util.Log.d("NotificationHelper", "showCompletedNotification called: $fileName at $filePath")
 
         val notificationId = getNotificationId(downloadId)
 
@@ -257,9 +252,7 @@ class DownloadNotificationHelper(private val context: Context) {
         }
 
         // Show notification - replaces existing notification with same ID
-        android.util.Log.d("NotificationHelper", "Displaying completion notification ID: $notificationId")
         notificationManager.notify(notificationId, builder.build())
-        android.util.Log.d("NotificationHelper", "Completion notification displayed")
     }
 
     /**
@@ -279,8 +272,6 @@ class DownloadNotificationHelper(private val context: Context) {
         vibrateEnabled: Boolean = true,
         lightEnabled: Boolean = true
     ) {
-        android.util.Log.d("NotificationHelper", "showFailedNotification called: $fileName, Error: $errorMessage")
-
         val notificationId = getNotificationId(downloadId)
 
         val message = errorMessage?.let { "Failed: $it" } ?: "Download failed"
@@ -325,9 +316,7 @@ class DownloadNotificationHelper(private val context: Context) {
         builder.setContentIntent(contentIntent)
 
         // Show notification
-        android.util.Log.d("NotificationHelper", "Displaying failed notification ID: $notificationId")
         notificationManager.notify(notificationId, builder.build())
-        android.util.Log.d("NotificationHelper", "Failed notification displayed")
     }
 
     /**
@@ -446,22 +435,18 @@ class DownloadNotificationHelper(private val context: Context) {
     private fun createOpenFileIntent(filePath: String): PendingIntent {
         val file = File(filePath)
 
-        // Check if file exists
-        if (!file.exists()) {
-            android.util.Log.e("NotificationHelper", "File does not exist: $filePath")
-            // Return intent to open app instead
+        val uri = try {
+            androidx.core.content.FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
+        } catch (_: Exception) {
             return createOpenAppIntent()
         }
 
-        val uri = androidx.core.content.FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            file
-        )
-
         // Get MIME type
         val mimeType = getMimeType(filePath) ?: "*/*"
-        android.util.Log.d("NotificationHelper", "Opening file: $filePath, MIME: $mimeType")
 
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, mimeType)

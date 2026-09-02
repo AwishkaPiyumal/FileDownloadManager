@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.piumal.filedownloadmanager.data.download.DownloadManager
 import com.piumal.filedownloadmanager.data.local.DownloadDatabase
 import com.piumal.filedownloadmanager.data.local.dao.DownloadDao
+import com.piumal.filedownloadmanager.data.security.DatabasePassphraseManager
 import com.piumal.filedownloadmanager.data.repository.DownloadRepositoryImpl
 import com.piumal.filedownloadmanager.domain.repository.DownloadRepository
 import dagger.Module
@@ -12,6 +13,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import androidx.sqlite.db.SupportSQLiteOpenHelper
 import javax.inject.Singleton
 
 @Module
@@ -23,11 +25,16 @@ object AppModule {
     fun provideDownloadDatabase(
         @ApplicationContext context: Context
     ): DownloadDatabase {
+        val passphrase = DatabasePassphraseManager.getOrCreatePassphrase(context)
+        val openHelperFactory = Class.forName("net.sqlcipher.database.SupportFactory")
+            .getConstructor(ByteArray::class.java)
+            .newInstance(passphrase) as SupportSQLiteOpenHelper.Factory
         return Room.databaseBuilder(
             context,
             DownloadDatabase::class.java,
             DownloadDatabase.DATABASE_NAME
         )
+            .openHelperFactory(openHelperFactory)
             .fallbackToDestructiveMigration()
             .build()
     }

@@ -94,6 +94,7 @@ lint/tmp/
 # AI Agent tools & credentials
 .gemini/
 .specify/
+.github/
 
 # Documentation files (will be added after project completion)
 ARCHITECTURE.md

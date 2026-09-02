@@ -4,7 +4,6 @@ import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.Intent
 import android.content.Context
-import android.media.MediaScannerConnection
 import android.webkit.MimeTypeMap
 import com.piumal.filedownloadmanager.data.download.DownloadManager
 import com.piumal.filedownloadmanager.data.download.DownloadService
@@ -75,7 +74,7 @@ class DownloadRepositoryImpl @Inject constructor(
             val download = requireExistingDownload(id)
             val file = File(download.filePath)
             if (file.exists() && !DownloadFileOperations.deletePhysicalFile(file.absolutePath)) {
-                throw IllegalStateException("Failed to physically delete file: ${file.absolutePath}")
+                throw IllegalStateException("Failed to physically delete download file")
             }
             downloadDao.deleteDownload(id)
         }
@@ -124,9 +123,13 @@ class DownloadRepositoryImpl @Inject constructor(
         runCatching {
             val download = requireExistingDownload(id)
             val file = File(download.filePath)
-            require(file.exists()) { "File does not exist: ${file.absolutePath}" }
 
-            val uri = fileProviderUri(file)
+            val uri = fileProviderUri(file) ?: throw IllegalStateException("File not accessible")
+
+            // Verify access
+            context.contentResolver.openFileDescriptor(uri, "r")?.close()
+                ?: throw IllegalStateException("File not accessible")
+
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(uri, mimeTypeFor(file) ?: "*/*")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -150,9 +153,13 @@ class DownloadRepositoryImpl @Inject constructor(
         runCatching {
             val download = requireExistingDownload(id)
             val file = File(download.filePath)
-            require(file.exists()) { "File does not exist: ${file.absolutePath}" }
 
-            val uri = fileProviderUri(file)
+            val uri = fileProviderUri(file) ?: throw IllegalStateException("File not accessible")
+
+            // Verify access
+            context.contentResolver.openFileDescriptor(uri, "r")?.close()
+                ?: throw IllegalStateException("File not accessible")
+
             val intent = Intent(Intent.ACTION_SEND).apply {
                 type = mimeTypeFor(file) ?: "*/*"
                 putExtra(Intent.EXTRA_STREAM, uri)
@@ -175,14 +182,24 @@ class DownloadRepositoryImpl @Inject constructor(
 
     override suspend fun showInFolder(id: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
-            try {
-                val intent = Intent(android.app.DownloadManager.ACTION_VIEW_DOWNLOADS).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                }
-                context.startActivity(intent)
-            } catch (e: Exception) {
-                throw Exception("Failed to open downloads folder")
+            val download = requireExistingDownload(id)
+            val file = File(download.filePath)
+            val uri = fileProviderUri(file) ?: throw IllegalStateException("File not accessible")
+
+            context.contentResolver.openFileDescriptor(uri, "r")?.close()
+                ?: throw IllegalStateException("File not accessible")
+
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, mimeTypeFor(file) ?: "*/*")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                clipData = ClipData.newRawUri(file.name, uri)
             }
+
+            val chooser = Intent.createChooser(intent, "Show in folder").apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(chooser)
         }
     }
 
@@ -274,10 +291,13 @@ class DownloadRepositoryImpl @Inject constructor(
         return MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext.lowercase())
     }
 
-    private fun fileProviderUri(file: File) = FileProvider.getUriForFile(
-        context,
-        "${context.packageName}.fileprovider",
-        file
-    )
+
+    private fun fileProviderUri(file: File): android.net.Uri? {
+        return try {
+            FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        } catch (_: Exception) {
+            null
+        }
+    }
 }
 

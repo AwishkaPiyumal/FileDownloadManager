@@ -17,41 +17,73 @@ import java.net.URL
 object ContentValidator {
 
     /**
-     * Allowed file extensions that are generally safe and legal
-     * These are common file types that don't typically involve piracy
+     * Allowed MIME types for safer downloads.
      */
-    private val ALLOWED_EXTENSIONS = setOf(
-        // Documents
-        "pdf", "doc", "docx", "txt", "rtf", "odt", "xls", "xlsx", "ppt", "pptx", "csv",
+    private val ALLOWED_MIME_TYPES = setOf(
+        "application/pdf",
+        "application/zip",
+        "application/x-zip-compressed", // Sometimes used for zip
+        "application/json",
+        "application/xml",
+        "text/plain",
+        "text/html",
+        "text/css",
+        "application/javascript"
+    )
 
-        // Images
-        "jpg", "jpeg", "png", "gif", "bmp", "svg", "webp", "ico",
+    private val ALLOWED_MIME_PREFIXES = listOf("video/", "audio/", "image/")
 
-        // Archives
-        "zip", "rar", "7z", "tar", "gz", "bz2",
-
-        // Code/Development
-        "apk", "json", "xml", "html", "css", "js", "java", "kt", "py", "cpp", "c", "h",
-
-        // Data
-        "db", "sql", "sqlite", "mdb",
-
-        // Test files and Others
-        "bin", "dat", "test", "sample", "demo", "iso", "log", "md", "yaml", "yml"
+    /**
+     * Dangerous MIME types that must be explicitly blocked.
+     */
+    private val BLOCKED_MIME_TYPES = setOf(
+        "application/x-msdownload",
+        "application/x-sh",
+        "application/x-executable",
+        //"application/octet-stream" // Often used for executables
     )
 
     /**
-     * Restricted extensions that require extra warnings
-     * These are often used for piracy but have legitimate uses
+     * Validates the MIME type of a download.
+     * 
+     * @param mimeType The MIME type to validate (e.g., "video/mp4")
+     * @return ValidationResult
      */
-    private val RESTRICTED_EXTENSIONS = setOf(
-        // Media files - high piracy risk
-        "mp3", "mp4", "avi", "mkv", "flv", "wmv", "mov", "m4a", "wav", "flac",
-        "aac", "ogg", "webm", "m4v", "3gp", "mpeg", "mpg",
+    fun validateMimeType(mimeType: String?, url: String): ValidationResult {
+        val type = mimeType?.lowercase()?.trim() ?: ""
 
-        // Executable files - malware risk
-        "exe", "msi", "bat", "sh", "dll", "so", "dmg", "pkg", "deb", "rpm"
-    )
+        if (BLOCKED_MIME_TYPES.contains(type)) {
+            return ValidationResult(
+                isValid = false,
+                message = "This file type is blocked for security reasons."
+            )
+        }
+
+        if (ALLOWED_MIME_TYPES.contains(type) || ALLOWED_MIME_PREFIXES.any { type.startsWith(it) }) {
+            return ValidationResult(
+                isValid = true,
+                message = "MIME type is valid"
+            )
+        }
+
+        // Fallback for generic or missing MIME types (e.g. octet-stream)
+        if (type.isEmpty() || type == "application/octet-stream" || type == "binary/octet-stream") {
+            val extension = getFileExtension(url)
+            val safeExtensions = setOf(
+                "mp4", "mp3", "pdf", "zip", "rar", "7z", "jpg", "jpeg", "png",
+                "gif", "webp", "txt", "doc", "docx", "xls", "xlsx", "apk", "json", "iso"
+            )
+
+            if (extension != null && safeExtensions.contains(extension)) {
+                return ValidationResult(isValid = true, message = "Valid via extension fallback")
+            }
+        }
+
+        return ValidationResult(
+            isValid = false,
+            message = "Unsupported or unsafe file type: $mimeType"
+        )
+    }
 
     /**
      * Blocked domains - CRITICAL for Google Play Store & AdMob Compliance
@@ -66,98 +98,30 @@ object ContentValidator {
         "youtube.com", "youtu.be", "youtube-nocookie.com",
         "youtube-dl", "ytmp3", "y2mate", "savefrom", "keepvid", "yt1s", "ytmp4",
 
-        // Netflix (DRM-protected - ILLEGAL to download)
+        // Strict DRM-protected streaming services
         "netflix.com", "nflxvideo.net", "nflxext.com", "nflximg.net",
-
-        // Disney+ (DRM-protected)
-        "disneyplus.com", "disney.com", "starwars.com", "marvel.com",
-
-        // HBO Max (DRM-protected)
-        "hbomax.com", "hbo.com", "hbogo.com", "hbonow.com",
-
-        // Amazon Prime Video (DRM-protected)
-        "primevideo.com", "amazonvideo.com", "amazon.com/gp/video",
-
-        // Hulu (DRM-protected)
-        "hulu.com", "hulustream.com",
-
-        // Apple TV+ (DRM-protected)
-        "tv.apple.com", "appletv.com",
-
-        // Peacock, Paramount+, etc.
-        "peacocktv.com", "paramountplus.com", "showtime.com",
-
-        // Other streaming
-        "vimeo.com", "dailymotion.com", "twitch.tv",
-
-        // ==================== SOCIAL MEDIA PLATFORMS ====================
-        // Facebook (violates Facebook ToS + copyright issues)
-        "facebook.com", "fb.com", "fbcdn.net", "fb.watch",
-
-        // Instagram (violates Instagram ToS + copyright)
-        "instagram.com", "cdninstagram.com", "igcdn.com",
-
-        // TikTok (violates TikTok ToS + copyright)
-        "tiktok.com", "tiktokv.com", "tiktokcdn.com", "musical.ly",
-
-        // Twitter/X (violates Twitter ToS)
-        "twitter.com", "x.com", "twimg.com", "t.co",
-
-        // Snapchat (violates Snapchat ToS)
-        "snapchat.com", "snap.com",
-
-        // Reddit (media copyright issues)
-        "reddit.com", "redd.it", "v.redd.it",
-
-        // Pinterest (copyright issues)
-        "pinterest.com", "pinimg.com",
-
-        // LinkedIn (violates LinkedIn ToS)
-        "linkedin.com",
-
-        // ==================== MUSIC STREAMING ====================
-        // Spotify (DRM-protected + violates ToS)
-        "spotify.com", "spotifycdn.com",
-
-        // Apple Music (DRM-protected)
-        "music.apple.com", "applemusic.com",
-
-        // Deezer, Tidal, etc. (DRM-protected)
-        "deezer.com", "tidal.com", "tidalhifi.com",
-
-        // SoundCloud (violates ToS + copyright)
-        "soundcloud.com", "sndcdn.com",
-
-        // Pandora (DRM-protected)
-        "pandora.com",
+        "disneyplus.com", "hbomax.com", "primevideo.com", "hulu.com",
+        "tv.apple.com", "peacocktv.com", "paramountplus.com", "showtime.com",
+        "spotify.com", "music.apple.com", "deezer.com", "tidal.com", "soundcloud.com",
 
         // ==================== PIRACY/TORRENT SITES ====================
         "piratebay", "thepiratebay", "kickass", "rarbg", "yts", "1337x",
-        "eztv", "limetorrent", "torrentz", "extratorrent",
-
-        // ==================== ADULT CONTENT ====================
-        // Required by Google Play Store policy
-        "pornhub", "xvideos", "xnxx", "redtube", "youporn",
-        "xhamster", "spankbang", "chaturbate", "onlyfans",
-
-        // ==================== MALWARE/HACKING ====================
-        "malware", "virus", "warez", "darkweb", "onion"
+        "eztv", "limetorrent", "torrentz", "extratorrent", "torrent", "magnet:"
     )
 
     /**
      * Suspicious URL patterns that may indicate illegal activity
      */
     private val SUSPICIOUS_PATTERNS = listOf(
-        "crack", "keygen", "patch", "serial", "pirate", "warez",
+        "crack", "keygen", "pirate", "warez",
         "nulled", "leaked", "ripped", "torrent", "magnet:",
-        "free-premium", "hack", "cheat", "mod-apk"
+        "hack", "cheat", "mod-apk"
     )
 
     /**
-     * Maximum file size (500 MB) to prevent abuse and excessive downloads
-     * Large files are more likely to be pirated movies/software
+     * Maximum file size (5 GB) to support enterprise-grade downloads while preserving abuse controls.
      */
-    private const val MAX_FILE_SIZE = 500L * 1024 * 1024 // 500 MB
+    private const val MAX_FILE_SIZE = 5000L * 1024 * 1024
 
     /**
      * Validation result containing status and message
@@ -194,6 +158,14 @@ object ContentValidator {
             )
         }
 
+        // Enforce HTTP/HTTPS only
+        if (!isHttpOrHttps(url)) {
+            return ValidationResult(
+                isValid = false,
+                message = "Only HTTP and HTTPS URLs are supported"
+            )
+        }
+
         // Check for blocked domains
         val domain = parsedUrl.host.lowercase()
         if (BLOCKED_DOMAINS.any { domain.contains(it) }) {
@@ -214,35 +186,19 @@ object ContentValidator {
             }
         }
 
-        // Extract file extension
-        val fileName = parsedUrl.path.substringAfterLast('/')
-        val extension = fileName.substringAfterLast('.', "").lowercase()
-
-        // Check if extension is blocked
-        if (extension.isNotEmpty() &&
-            !ALLOWED_EXTENSIONS.contains(extension) &&
-            !RESTRICTED_EXTENSIONS.contains(extension)) {
-            return ValidationResult(
-                isValid = false,
-                message = "You cannot download this file type."
-            )
-        }
-
-        // Check if extension requires warning
-        if (RESTRICTED_EXTENSIONS.contains(extension)) {
-            return ValidationResult(
-                isValid = false,
-                message = "You cannot download this file type.",
-                requiresWarning = false,
-                warningMessage = null
-            )
-        }
-
         // All checks passed
         return ValidationResult(
             isValid = true,
             message = "URL validated successfully"
         )
+    }
+
+    /**
+     * Returns true when the URL uses a supported HTTP scheme.
+     */
+    fun isHttpOrHttps(url: String): Boolean {
+        return url.startsWith("http://", ignoreCase = true) ||
+            url.startsWith("https://", ignoreCase = true)
     }
 
     /**
@@ -301,7 +257,7 @@ object ContentValidator {
         if (size > MAX_FILE_SIZE) {
             return ValidationResult(
                 isValid = false,
-                message = "File size exceeds maximum limit (500 MB). Large files are restricted to prevent abuse."
+                message = "File size exceeds maximum limit (5 GB)."
             )
         }
 

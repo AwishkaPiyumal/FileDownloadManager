@@ -1,11 +1,14 @@
+@file:Suppress("unused")
+
 package com.piumal.filedownloadmanager.data.download
 
 import android.content.Context
-import android.os.Environment
-import android.util.Log
+import android.os.StatFs
 import com.piumal.filedownloadmanager.domain.model.DownloadItem
 import com.piumal.filedownloadmanager.domain.model.DownloadStatus
 import com.piumal.filedownloadmanager.domain.util.ContentValidator
+import com.piumal.filedownloadmanager.domain.util.DownloadStoragePaths
+import com.piumal.filedownloadmanager.domain.util.FileNameSanitizer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
@@ -28,6 +31,11 @@ class DownloadManager @Inject constructor(
     private val context: Context
 ) {
 
+    private companion object {
+        private const val BUFFER_SIZE_BYTES = 64 * 1024
+        private const val STORAGE_SAFETY_MARGIN_BYTES = 32L * 1024 * 1024
+    }
+
     private val okHttpClient = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
@@ -42,22 +50,25 @@ class DownloadManager @Inject constructor(
     )
 
     fun downloadFile(downloadItem: DownloadItem): Flow<DownloadProgress> = flow {
+        val safeFileName = FileNameSanitizer.sanitize(downloadItem.fileName)
         try {
-            Log.d("DownloadManager", "Starting download: ${downloadItem.fileName}")
-
+            if (!ContentValidator.isHttpOrHttps(downloadItem.url)) {
+                emit(DownloadProgress(0, 0, DownloadStatus.FAILED, "Only HTTP and HTTPS URLs are supported"))
+                return@flow
+            }
             val validation = ContentValidator.validateDownloadUrl(downloadItem.url)
             if (!validation.isValid) {
                 emit(DownloadProgress(0, 0, DownloadStatus.FAILED, validation.message))
                 return@flow
             }
 
-            val downloadDir = getDownloadDirectory()
+            val file = File(downloadItem.filePath.ifBlank { DownloadStoragePaths.getDownloadFilePath(safeFileName) })
+            val downloadDir = file.parentFile ?: DownloadStoragePaths.getDownloadDirectory()
             if (!downloadDir.exists() && !downloadDir.mkdirs()) {
                 emit(DownloadProgress(0, 0, DownloadStatus.FAILED, "Failed to create download directory"))
                 return@flow
             }
 
-            val file = File(downloadDir, downloadItem.fileName)
             var downloadedBytes = if (file.exists()) file.length() else 0L
 
             val requestBuilder = Request.Builder()
@@ -86,6 +97,16 @@ class DownloadManager @Inject constructor(
             }
 
             response.use { resp ->
+                // Validate Content-Type
+                val contentType = resp.header("Content-Type")
+                if (contentType != null) {
+                    val mimeTypeValidation = ContentValidator.validateMimeType(contentType, downloadItem.url)
+                    if (!mimeTypeValidation.isValid) {
+                        resp.close()
+                        throw SecurityException(mimeTypeValidation.message)
+                    }
+                }
+
                 if (!resp.isSuccessful && resp.code != 206) {
                     emit(DownloadProgress(0, 0, DownloadStatus.FAILED, "HTTP ${resp.code}: ${resp.message}"))
                     return@flow
@@ -107,8 +128,21 @@ class DownloadManager @Inject constructor(
 
                 val totalBytes = if (isPartial && contentLength != -1L) {
                     downloadedBytes + contentLength
-                } else {
+                } else if (contentLength > 0) {
                     contentLength
+                } else {
+                    downloadItem.totalSize
+                }
+
+                val remainingBytes = when {
+                    totalBytes > 0 -> (totalBytes - downloadedBytes).coerceAtLeast(0L)
+                    contentLength > 0 -> contentLength
+                    else -> 0L
+                }
+
+                if (remainingBytes > 0 && !hasEnoughStorage(downloadDir, remainingBytes)) {
+                    emit(DownloadProgress(downloadedBytes, totalBytes, DownloadStatus.FAILED, "Insufficient storage space"))
+                    return@flow
                 }
 
                 if (totalBytes > 0) {
@@ -122,15 +156,30 @@ class DownloadManager @Inject constructor(
                 var currentDownloadedBytes = downloadedBytes
                 emit(DownloadProgress(currentDownloadedBytes, totalBytes, DownloadStatus.DOWNLOADING))
 
-                val buffer = ByteArray(8192)
+                val buffer = ByteArray(BUFFER_SIZE_BYTES)
                 var bytesRead: Int
                 var bytesSinceLastEmit = 0L
                 val emitThreshold = 100 * 1024 // 100 KB
+                var isFirstBuffer = true
 
                 body.byteStream().use { inputStream ->
                     FileOutputStream(file, isPartial).use { outputStream ->
                         while (inputStream.read(buffer).also { bytesRead = it } != -1) {
                             if (!currentCoroutineContext().isActive) break
+                            
+                            // Check for magic numbers in the very first chunk
+                            if (isFirstBuffer && bytesRead >= 2) {
+                                val b1 = buffer[0].toInt() and 0xFF
+                                val b2 = buffer[1].toInt() and 0xFF
+                                
+                                // MZ (0x4D 0x5A) or #! (0x23 0x21)
+                                if ((b1 == 0x4D && b2 == 0x5A) || (b1 == 0x23 && b2 == 0x21)) {
+                                    outputStream.close()
+                                    file.delete()
+                                    throw SecurityException("Malicious file signature detected: $b1 $b2")
+                                }
+                                isFirstBuffer = false
+                            }
 
                             outputStream.write(buffer, 0, bytesRead)
                             currentDownloadedBytes += bytesRead
@@ -147,42 +196,27 @@ class DownloadManager @Inject constructor(
 
                 emit(DownloadProgress(currentDownloadedBytes, totalBytes, DownloadStatus.COMPLETED))
             }
+        } catch (e: SecurityException) {
+            emit(DownloadProgress(0, downloadItem.totalSize, DownloadStatus.FAILED, e.message ?: "Security violation"))
         } catch (e: IOException) {
-            val file = File(getDownloadDirectory(), downloadItem.fileName)
+            val file = File(downloadItem.filePath.ifBlank { DownloadStoragePaths.getDownloadFilePath(safeFileName) })
             val currentSize = if (file.exists()) file.length() else 0L
-            emit(DownloadProgress(currentSize, downloadItem.totalSize, DownloadStatus.FAILED, "Network error: ${e.message}"))
+            emit(DownloadProgress(currentSize, downloadItem.totalSize, DownloadStatus.FAILED, "Network error during download"))
         } catch (e: Exception) {
-            val file = File(getDownloadDirectory(), downloadItem.fileName)
+            val file = File(downloadItem.filePath.ifBlank { DownloadStoragePaths.getDownloadFilePath(safeFileName) })
             val currentSize = if (file.exists()) file.length() else 0L
-            emit(DownloadProgress(currentSize, downloadItem.totalSize, DownloadStatus.FAILED, "Error: ${e.message}"))
+            emit(DownloadProgress(currentSize, downloadItem.totalSize, DownloadStatus.FAILED, "Unexpected error during download"))
         }
     }.flowOn(Dispatchers.IO)
 
     fun getDownloadDirectory(): File {
-        // App-specific external directory guarantees write access across Android 5.0 to 14+ without legacy storage flags
-        return context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-            ?: File(context.filesDir, "downloads").apply { mkdirs() }
+        return DownloadStoragePaths.getDownloadDirectory().apply { mkdirs() }
     }
 
-    suspend fun getFileSize(url: String): Long = withContext(Dispatchers.IO) {
-        try {
-            val request = Request.Builder().url(url).head().build()
-            okHttpClient.newCall(request).execute().use { response ->
-                if (response.isSuccessful) response.body?.contentLength() ?: 0L else 0L
-            }
-        } catch (e: Exception) {
-            0L
-        }
-    }
+    private fun hasEnoughStorage(directory: File, requiredBytes: Long): Boolean {
+        if (requiredBytes <= 0L) return true
 
-    suspend fun isUrlAccessible(url: String): Boolean = withContext(Dispatchers.IO) {
-        try {
-            val request = Request.Builder().url(url).head().build()
-            okHttpClient.newCall(request).execute().use { response ->
-                response.isSuccessful
-            }
-        } catch (e: Exception) {
-            false
-        }
+        val statFs = StatFs(directory.absolutePath)
+        return statFs.availableBytes > requiredBytes + STORAGE_SAFETY_MARGIN_BYTES
     }
 }

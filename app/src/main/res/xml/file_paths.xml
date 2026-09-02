@@ -4,6 +4,7 @@
     <external-path name="external_files" path="." />
     <external-path name="download" path="Download/" />
     <external-path name="download_manager" path="Download/FileDownloadManager/" />
+    <external-path name="download_manager_public" path="Download/File Download Manager/" />
 
     <!-- App-specific external storage locations (safe for FileProvider sharing) -->
     <external-files-path name="app_external_files" path="." />

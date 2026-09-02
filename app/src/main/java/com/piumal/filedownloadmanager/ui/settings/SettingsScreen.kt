@@ -20,6 +20,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import com.piumal.filedownloadmanager.domain.util.DownloadStoragePaths
 import com.piumal.filedownloadmanager.ui.settings.components.CollapsibleSection
 import com.piumal.filedownloadmanager.ui.settings.components.SettingItem
 import com.piumal.filedownloadmanager.ui.settings.components.SettingsDivider
@@ -192,7 +193,7 @@ private fun getReadablePath(uri: Uri): String {
             "/storage/${split[0]}/${split[1]}"
         }
     } else {
-        uri.path ?: "Download/FileDownloadManager"
+            uri.path ?: DownloadStoragePaths.DEFAULT_UI_FOLDER_LABEL
     }
 }
 

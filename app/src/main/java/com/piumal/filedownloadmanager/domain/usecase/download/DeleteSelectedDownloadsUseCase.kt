@@ -56,18 +56,14 @@ class DeleteSelectedDownloadsUseCase @Inject constructor(
      */
     suspend operator fun invoke(selectedIds: Set<String>): Result<Int> {
         return try {
-            Log.d(TAG, "=== Starting Delete Selected Downloads ===")
-            Log.d(TAG, "Selected IDs count: ${selectedIds.size}")
+            Log.d(TAG, "Starting bulk delete for ${selectedIds.size} items")
 
             if (selectedIds.isEmpty()) {
-                Log.d(TAG, "No downloads selected to delete")
                 return Result.success(0)
             }
 
             // Get the download directory
             val downloadDir = getDownloadDirectory()
-            Log.d(TAG, "Download directory: ${downloadDir.absolutePath}")
-
             var deletedCount = 0
 
             selectedIds.forEach { downloadId ->
@@ -76,16 +72,15 @@ class DeleteSelectedDownloadsUseCase @Inject constructor(
                     val download = downloadRepository.getDownloadById(downloadId)
 
                     if (download != null) {
-                        Log.d(TAG, "Deleting download: ${download.id} - ${download.fileName}")
+                        Log.d(TAG, "Deleting download ID: ${download.id}")
 
                         // First, cancel if it's still downloading
                         if (download.status == DownloadStatus.DOWNLOADING ||
                             download.status == DownloadStatus.QUEUED) {
                             try {
                                 downloadRepository.cancelDownload(download.id)
-                                Log.d(TAG, "Cancelled active download: ${download.id}")
                             } catch (e: Exception) {
-                                Log.e(TAG, "Failed to cancel download ${download.id}: ${e.message}")
+                                Log.e(TAG, "Failed to cancel active download: ${e.message}")
                             }
                         }
 
@@ -96,7 +91,6 @@ class DeleteSelectedDownloadsUseCase @Inject constructor(
                         val storedFile = File(download.filePath)
                         if (storedFile.exists()) {
                             fileDeleted = storedFile.delete()
-                            Log.d(TAG, "Deleted from stored path: ${storedFile.absolutePath} - Result: $fileDeleted")
                         }
 
                         // 2. Try the download directory with fileName
@@ -104,7 +98,6 @@ class DeleteSelectedDownloadsUseCase @Inject constructor(
                             val actualFile = File(downloadDir, download.fileName)
                             if (actualFile.exists()) {
                                 fileDeleted = actualFile.delete()
-                                Log.d(TAG, "Deleted from download dir: ${actualFile.absolutePath} - Result: $fileDeleted")
                             }
                         }
 
@@ -118,13 +111,12 @@ class DeleteSelectedDownloadsUseCase @Inject constructor(
                                 )
                                 if (appFile.exists()) {
                                     fileDeleted = appFile.delete()
-                                    Log.d(TAG, "Deleted from app-specific storage: ${appFile.absolutePath} - Result: $fileDeleted")
                                 }
                             }
                         }
 
                         if (!fileDeleted) {
-                            Log.d(TAG, "File not found in any location for: ${download.fileName}")
+                            Log.d(TAG, "No matching file found for selected download")
                         }
 
                         // Also try to delete any partial/temp files in all locations
@@ -134,26 +126,25 @@ class DeleteSelectedDownloadsUseCase @Inject constructor(
                         ).forEach { tempFile ->
                             if (tempFile.exists()) {
                                 tempFile.delete()
-                                Log.d(TAG, "Deleted temp file: ${tempFile.absolutePath}")
                             }
                         }
 
                         // Remove from database
                         downloadRepository.deleteDownload(download.id)
                         deletedCount++
-                        Log.d(TAG, "Deleted download from database: ${download.id}")
+                        Log.d(TAG, "Deleted download record: ${download.id}")
 
                     } else {
-                        Log.w(TAG, "Download not found for ID: $downloadId")
+                            Log.w(TAG, "Download not found for one selected item")
                     }
 
                 } catch (e: Exception) {
-                    Log.e(TAG, "Failed to delete download $downloadId: ${e.message}")
+                    Log.e(TAG, "Failed to delete a selected download: ${e.message}")
                     // Continue with other downloads even if one fails
                 }
             }
 
-            Log.d(TAG, "=== Delete Selected Downloads Complete: $deletedCount deleted ===")
+            Log.d(TAG, "Bulk delete completed: $deletedCount deleted")
             Result.success(deletedCount)
 
         } catch (e: Exception) {
