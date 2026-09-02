@@ -99,13 +99,12 @@ class DownloadManager @Inject constructor(
             response.use { resp ->
                 // Validate Content-Type
                 val contentType = resp.header("Content-Type")
-                if (contentType != null) {
-                    val mimeTypeValidation = ContentValidator.validateMimeType(contentType, downloadItem.url)
-                    if (!mimeTypeValidation.isValid) {
-                        resp.close()
-                        throw SecurityException(mimeTypeValidation.message)
-                    }
+                val mimeTypeValidation = ContentValidator.validateMimeType(contentType, downloadItem.url)
+                if (!mimeTypeValidation.isValid) {
+                    resp.close()
+                    throw SecurityException(mimeTypeValidation.message)
                 }
+
 
                 if (!resp.isSuccessful && resp.code != 206) {
                     emit(DownloadProgress(0, 0, DownloadStatus.FAILED, "HTTP ${resp.code}: ${resp.message}"))
@@ -168,15 +167,17 @@ class DownloadManager @Inject constructor(
                             if (!currentCoroutineContext().isActive) break
                             
                             // Check for magic numbers in the very first chunk
-                            if (isFirstBuffer && bytesRead >= 2) {
-                                val b1 = buffer[0].toInt() and 0xFF
-                                val b2 = buffer[1].toInt() and 0xFF
-                                
-                                // MZ (0x4D 0x5A) or #! (0x23 0x21)
-                                if ((b1 == 0x4D && b2 == 0x5A) || (b1 == 0x23 && b2 == 0x21)) {
-                                    outputStream.close()
-                                    file.delete()
-                                    throw SecurityException("Malicious file signature detected: $b1 $b2")
+                            if (isFirstBuffer) {
+                                if (!isPartial && bytesRead >= 2) {
+                                    val b1 = buffer[0].toInt() and 0xFF
+                                    val b2 = buffer[1].toInt() and 0xFF
+                                    
+                                    // MZ (0x4D 0x5A) or #! (0x23 0x21)
+                                    if ((b1 == 0x4D && b2 == 0x5A) || (b1 == 0x23 && b2 == 0x21)) {
+                                        outputStream.close()
+                                        file.delete()
+                                        throw SecurityException("Malicious file signature detected: $b1 $b2")
+                                    }
                                 }
                                 isFirstBuffer = false
                             }

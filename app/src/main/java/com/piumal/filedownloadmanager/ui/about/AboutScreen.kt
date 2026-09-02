@@ -19,7 +19,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 
 private const val PROJECT_URL = "https://github.com/AwishkaPiyumal/FileDownloadManager"
-private const val APP_VERSION = "1.0"
+private const val APP_VERSION = "1.1.0"
 private const val APP_PACKAGE_NAME = "com.piumal.filedownloadmanager"
 
 @Composable

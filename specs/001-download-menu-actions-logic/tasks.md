@@ -71,3 +71,7 @@
 
 ## Phase 16: Convergence - Magic Number Security Remediation
 - [X] T043 Implement file signature ("Magic Number") validation in `DownloadManager.kt` streaming pipeline to detect and block malicious signatures (e.g., MZ, #!) upon the first buffer read, aborting and deleting the partial file per security request (CRITICAL)
+
+## Phase 17: Convergence - MIME-type Allowlist Fix
+- [X] T044 Update `ContentValidator.validateMimeType` to accept URL for extension fallback, remove `application/octet-stream` from `BLOCKED_MIME_TYPES`, and implement extension-based fallback for unknown or generic types (HIGH)
+- [X] T045 Update `DownloadManager.kt` to use the updated `validateMimeType(contentType, url)` signature (HIGH)

@@ -28,8 +28,8 @@ android {
         applicationId = "com.piumal.filedownloadmanager"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode =5
+        versionName = "1.1.0"
 
         buildConfigField("String", "API_BASE_URL", "\"${localProperty("API_BASE_URL").asBuildConfigLiteral()}\"")
         buildConfigField("String", "API_KEY", "\"${localProperty("API_KEY").asBuildConfigLiteral()}\"")
