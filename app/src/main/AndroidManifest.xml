@@ -39,7 +39,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.FileDownloadManager"
         android:usesCleartextTraffic="true"
-        android:requestLegacyExternalStorage="true">
+        android:requestLegacyExternalStorage="true"
+        android:extractNativeLibs="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"

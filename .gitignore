@@ -109,3 +109,6 @@ GitHub_Push_Guide.md
 READY_TO_PUSH.md
 PUSH_COMMANDS.txt
 
+.env
+.env.*
+*.key

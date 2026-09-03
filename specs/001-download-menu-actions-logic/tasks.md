@@ -75,3 +75,7 @@
 ## Phase 17: Convergence - MIME-type Allowlist Fix
 - [X] T044 Update `ContentValidator.validateMimeType` to accept URL for extension fallback, remove `application/octet-stream` from `BLOCKED_MIME_TYPES`, and implement extension-based fallback for unknown or generic types (HIGH)
 - [X] T045 Update `DownloadManager.kt` to use the updated `validateMimeType(contentType, url)` signature (HIGH)
+
+## Bug Fixes
+- [X] Fix SQLCipher relaunch crash: Added `SQLiteDatabase.loadLibs(context)` in `AppModule.kt` and refactored `DatabasePassphraseManager.kt` to use modern `MasterKey` API.
+- [X] Verified SQLCipher passphrase persistence with instrumented test: `DatabasePassphraseManagerTest.kt` added to verify the passphrase is retrieved consistently across calls.

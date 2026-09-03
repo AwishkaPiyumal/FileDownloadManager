@@ -3,7 +3,7 @@ package com.piumal.filedownloadmanager.data.security
 import android.content.Context
 import android.util.Base64
 import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
+import androidx.security.crypto.MasterKey
 import java.security.SecureRandom
 
 /**
@@ -16,12 +16,14 @@ object DatabasePassphraseManager {
     private const val PASSPHRASE_SIZE_BYTES = 32
 
     fun getOrCreatePassphrase(context: Context): ByteArray {
-        val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
 
         val preferences = EncryptedSharedPreferences.create(
-            PREFS_NAME,
-            masterKeyAlias,
             context,
+            PREFS_NAME,
+            masterKey,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )

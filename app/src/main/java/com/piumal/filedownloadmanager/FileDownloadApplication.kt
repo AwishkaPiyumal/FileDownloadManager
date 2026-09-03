@@ -28,6 +28,7 @@ class FileDownloadApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        System.loadLibrary("sqlcipher")
         Log.d(TAG, "Application onCreate() - Hilt initialized")
 
         connectivityManager = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
