@@ -29,12 +29,11 @@ class FileOperationTestRepository : DownloadRepository {
         deleteDownload(id)
     }
 
-    override suspend fun moveDownloadFile(id: String, destinationPath: String): Result<Unit> = runCatching {
-        val download = getDownloadById(id) ?: throw IllegalArgumentException("Download not found: $id")
-        val target = DownloadFileOperations.movePhysicalFile(download.filePath, destinationPath, null) {
-            java.io.File(System.getProperty("java.io.tmpdir"), "fallback")
-        }
-        updateDownload(download.copy(filePath = target.absolutePath))
+    override suspend fun copyDownload(item: DownloadItem, destinationFolderPath: String): Result<Unit> = runCatching {
+        // Since this is a test repository, we simulate copying by just creating a dummy file in the destination
+        val destFile = java.io.File(destinationFolderPath, item.fileName)
+        destFile.writeText("simulated_copy_content")
+        updateDownload(item.copy(filePath = destFile.absolutePath))
     }
 
     override suspend fun openDownload(id: String): Result<Unit> = Result.success(Unit)

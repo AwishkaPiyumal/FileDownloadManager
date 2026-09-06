@@ -27,9 +27,9 @@ class FakeDownloadRepository : DownloadRepository {
 
     override suspend fun deleteDownloadFile(id: String): Result<Unit> = runCatching { deleteDownload(id) }
 
-    override suspend fun moveDownloadFile(id: String, destinationPath: String): Result<Unit> = runCatching {
-        val index = downloads.indexOfFirst { it.id == id }
-        if (index != -1) downloads[index] = downloads[index].copy(filePath = destinationPath)
+    override suspend fun copyDownload(item: DownloadItem, destinationFolderPath: String): Result<Unit> = runCatching {
+        val index = downloads.indexOfFirst { it.id == item.id }
+        if (index != -1) downloads[index] = downloads[index].copy(filePath = java.io.File(destinationFolderPath, item.fileName).absolutePath)
     }
 
     override suspend fun openDownload(id: String): Result<Unit> = Result.success(Unit)

@@ -59,26 +59,31 @@ object ContentValidator {
             )
         }
 
-        if (ALLOWED_MIME_TYPES.contains(type) || ALLOWED_MIME_PREFIXES.any { type.startsWith(it) }) {
+        // Allow explicitly allowed types and types starting with allowed prefixes
+        if (ALLOWED_MIME_TYPES.contains(type) || type == "application/x-unknown-type" || ALLOWED_MIME_PREFIXES.any { type.startsWith(it) }) {
             return ValidationResult(
                 isValid = true,
                 message = "MIME type is valid"
             )
         }
 
-        // Fallback for generic or missing MIME types (e.g. octet-stream)
-        if (type.isEmpty() || type == "application/octet-stream" || type == "binary/octet-stream") {
-            val extension = getFileExtension(url)
+        // Relaxed fallback: if the content type is unknown/generic, check the extension.
+        // If extension is safe, allow it.
+        val extension = getFileExtension(url)
+        if (extension != null) {
             val safeExtensions = setOf(
                 "mp4", "mp3", "pdf", "zip", "rar", "7z", "jpg", "jpeg", "png",
-                "gif", "webp", "txt", "doc", "docx", "xls", "xlsx", "apk", "json", "iso"
+                "gif", "webp", "txt", "doc", "docx", "xls", "xlsx", "apk", "json", "iso", "tar", "gz"
             )
 
-            if (extension != null && safeExtensions.contains(extension)) {
+            if (safeExtensions.contains(extension)) {
                 return ValidationResult(isValid = true, message = "Valid via extension fallback")
             }
         }
-
+        
+        // If content type is unknown/generic, and extension is missing or not explicitly safe, 
+        // we might still want to allow it if it's not explicitly blocked to improve user experience, 
+        // but for now, we continue to block truly unknown/unsafe types to maintain security.
         return ValidationResult(
             isValid = false,
             message = "Unsupported or unsafe file type: $mimeType"

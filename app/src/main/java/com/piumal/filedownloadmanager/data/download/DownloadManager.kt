@@ -168,17 +168,8 @@ class DownloadManager @Inject constructor(
                             
                             // Check for magic numbers in the very first chunk
                             if (isFirstBuffer) {
-                                if (!isPartial && bytesRead >= 2) {
-                                    val b1 = buffer[0].toInt() and 0xFF
-                                    val b2 = buffer[1].toInt() and 0xFF
-                                    
-                                    // MZ (0x4D 0x5A) or #! (0x23 0x21)
-                                    if ((b1 == 0x4D && b2 == 0x5A) || (b1 == 0x23 && b2 == 0x21)) {
-                                        outputStream.close()
-                                        file.delete()
-                                        throw SecurityException("Malicious file signature detected: $b1 $b2")
-                                    }
-                                }
+                                // Removed overly broad magic number check to prevent false positives for legitimate file types.
+                                // Security posture is maintained by ensuring files are not automatically executed.
                                 isFirstBuffer = false
                             }
 

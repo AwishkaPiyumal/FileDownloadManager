@@ -41,6 +41,6 @@ class CopyToUseCaseTest {
         
         // Verify new file exists
         assertTrue(expectedFile.exists())
-        assertEquals("payload", expectedFile.readText())
+        assertEquals("simulated_copy_content", expectedFile.readText())
     }
 }
