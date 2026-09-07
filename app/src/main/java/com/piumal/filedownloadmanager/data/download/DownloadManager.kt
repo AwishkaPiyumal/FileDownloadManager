@@ -203,6 +203,11 @@ class DownloadManager @Inject constructor(
                             currentDownloadedBytes += bytesRead
                             bytesSinceLastEmit += bytesRead
 
+                            // Enforce file size limit during streaming
+                            if (currentDownloadedBytes > ContentValidator.getMaxFileSize()) {
+                                throw IOException("File size exceeded maximum limit (5 GB).")
+                            }
+
                             if (bytesSinceLastEmit >= emitThreshold) {
                                 emit(DownloadProgress(currentDownloadedBytes, totalBytes, DownloadStatus.DOWNLOADING))
                                 bytesSinceLastEmit = 0L

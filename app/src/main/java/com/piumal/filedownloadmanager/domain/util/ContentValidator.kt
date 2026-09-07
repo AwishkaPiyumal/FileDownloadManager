@@ -128,6 +128,8 @@ object ContentValidator {
      */
     private const val MAX_FILE_SIZE = 5000L * 1024 * 1024
 
+    fun getMaxFileSize(): Long = MAX_FILE_SIZE
+
     /**
      * Validation result containing status and message
      */

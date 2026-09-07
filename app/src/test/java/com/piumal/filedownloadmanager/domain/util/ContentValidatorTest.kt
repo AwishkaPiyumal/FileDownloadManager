@@ -27,4 +27,22 @@ class ContentValidatorTest {
         
         assertFalse("Should be invalid for blocked MIME type", result.isValid)
     }
+
+    @Test
+    fun `validateFileSize should pass for size below limit`() {
+        val size = ContentValidator.getMaxFileSize() - 1024L
+        assertTrue(ContentValidator.validateFileSize(size).isValid)
+    }
+
+    @Test
+    fun `validateFileSize should pass for size exactly at limit`() {
+        val size = ContentValidator.getMaxFileSize()
+        assertTrue(ContentValidator.validateFileSize(size).isValid)
+    }
+
+    @Test
+    fun `validateFileSize should fail for size above limit`() {
+        val size = ContentValidator.getMaxFileSize() + 1024L
+        assertFalse(ContentValidator.validateFileSize(size).isValid)
+    }
 }
