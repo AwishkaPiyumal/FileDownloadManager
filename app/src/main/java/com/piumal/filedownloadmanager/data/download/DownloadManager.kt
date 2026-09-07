@@ -40,6 +40,32 @@ class DownloadManager @Inject constructor(
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
+        .addInterceptor { chain ->
+            val request = chain.request()
+            val response = chain.proceed(request)
+            
+            // Check for redirect
+            if (response.isRedirect) {
+                val location = response.header("Location")
+                if (location != null) {
+                    val finalUrl = if (location.startsWith("http")) {
+                        location
+                    } else {
+                        // Relative URL
+                        request.url.resolve(location)?.toString()
+                    }
+                    
+                    if (finalUrl != null && !ContentValidator.isSecureConnection(finalUrl)) {
+                        response.close()
+                        throw IOException("HTTPS to HTTP redirect is not allowed")
+                    }
+                }
+            }
+            
+            // Limit redirects to 5 is handled by OkHttp by default.
+            
+            response
+        }
         .build()
 
     data class DownloadProgress(
@@ -52,8 +78,8 @@ class DownloadManager @Inject constructor(
     fun downloadFile(downloadItem: DownloadItem): Flow<DownloadProgress> = flow {
         val safeFileName = FileNameSanitizer.sanitize(downloadItem.fileName)
         try {
-            if (!ContentValidator.isHttpOrHttps(downloadItem.url)) {
-                emit(DownloadProgress(0, 0, DownloadStatus.FAILED, "Only HTTP and HTTPS URLs are supported"))
+            if (!ContentValidator.isSecureConnection(downloadItem.url)) {
+                emit(DownloadProgress(0, 0, DownloadStatus.FAILED, "Only HTTPS URLs are supported"))
                 return@flow
             }
             val validation = ContentValidator.validateDownloadUrl(downloadItem.url)

@@ -5,21 +5,30 @@ package com.piumal.filedownloadmanager.domain.util
  */
 object FileNameSanitizer {
 
-    private val illegalCharacters = Regex("[<>:\"/\\\\|?*\u0000]")
+    // Blocked: Control characters (0-31, 127), path separators (/ \), and special characters
+    private val illegalCharacters = Regex("[\\x00-\\x1F\\x7F/\\\\<>:\"|?*]")
 
     fun sanitize(fileName: String, fallback: String = "download_") : String {
-        val withoutNullBytes = fileName.replace("\u0000", "")
-        val strippedPath = withoutNullBytes
-            .replace('\\', '/')
-            .substringAfterLast('/')
-            .replace("..", "")
+        // 1. Remove all control characters and known illegal filename characters
+        var sanitized = fileName.replace(illegalCharacters, "_")
+        
+        // 2. Remove all path-traversal sequences (e.g., ../, ..)
+        sanitized = sanitized.replace("..", "_")
+        
+        // 3. Ensure we are only dealing with the name part, not any path
+        sanitized = sanitized.substringAfterLast('/')
+        sanitized = sanitized.substringAfterLast('\\')
 
-        val cleaned = illegalCharacters.replace(strippedPath, "_")
-            .trim()
-            .trim('.', ' ')
+        // 4. Clean up whitespace and dots
+        sanitized = sanitized.trim().trim('.', ' ', '_')
+
+        // 5. Handle length and empty names
+        if (sanitized.length > 200) {
+            sanitized = sanitized.substring(0, 200)
+        }
 
         return when {
-            cleaned.isNotBlank() -> cleaned
+            sanitized.isNotBlank() -> sanitized
             else -> "$fallback${System.currentTimeMillis()}"
         }
     }

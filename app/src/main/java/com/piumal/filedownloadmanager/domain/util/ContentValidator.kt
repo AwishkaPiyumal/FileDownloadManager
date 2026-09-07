@@ -163,11 +163,11 @@ object ContentValidator {
             )
         }
 
-        // Enforce HTTP/HTTPS only
-        if (!isHttpOrHttps(url)) {
+        // Enforce HTTPS only
+        if (!isSecureConnection(url)) {
             return ValidationResult(
                 isValid = false,
-                message = "Only HTTP and HTTPS URLs are supported"
+                message = "Only HTTPS URLs are supported"
             )
         }
 
