@@ -19,10 +19,19 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+@Provides
+@Singleton
+fun provideStorageManager(
+    @ApplicationContext context: Context
+): com.piumal.filedownloadmanager.storage.StorageManager {
+    return com.piumal.filedownloadmanager.storage.StorageManagerImpl(context)
+}
 
-    @Provides
-    @Singleton
-    fun provideDownloadDatabase(
+@Provides
+@Singleton
+fun provideDownloadDatabase(
+// ...
+
         @ApplicationContext context: Context
     ): DownloadDatabase {
         val passphrase = DatabasePassphraseManager.getOrCreatePassphrase(context)
@@ -34,7 +43,7 @@ object AppModule {
             DownloadDatabase.DATABASE_NAME
         )
             .openHelperFactory(factory)
-            .fallbackToDestructiveMigration()
+            .addMigrations(com.piumal.filedownloadmanager.data.local.migration.MIGRATION_2_3)
             .build()
     }
 
@@ -47,9 +56,10 @@ object AppModule {
     @Provides
     @Singleton
     fun provideDownloadManager(
-        @ApplicationContext context: Context
+        @ApplicationContext context: Context,
+        storageManager: com.piumal.filedownloadmanager.storage.StorageManager
     ): DownloadManager {
-        return DownloadManager(context)
+        return DownloadManager(context, storageManager)
     }
 
     @Provides

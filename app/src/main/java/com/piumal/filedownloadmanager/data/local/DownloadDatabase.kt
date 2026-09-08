@@ -15,7 +15,7 @@ import com.piumal.filedownloadmanager.data.local.entity.DownloadEntity
  */
 @Database(
     entities = [DownloadEntity::class],
-    version = 2,  // Incremented version for scheduleTime field
+    version = 3,  // Incremented version for uri field
     exportSchema = false
 )
 abstract class DownloadDatabase : RoomDatabase() {

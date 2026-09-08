@@ -26,10 +26,18 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
+import com.piumal.filedownloadmanager.storage.StorageManager
+import com.piumal.filedownloadmanager.storage.StorageManagerImpl
+import dagger.hilt.android.qualifiers.ApplicationContext
+
+// ... imports
+
 @Singleton
 class DownloadManager @Inject constructor(
-    private val context: Context
+    @ApplicationContext private val context: Context,
+    private val storageManager: StorageManager
 ) {
+// ...
 
     private companion object {
         private const val BUFFER_SIZE_BYTES = 64 * 1024
@@ -188,18 +196,20 @@ class DownloadManager @Inject constructor(
                 var isFirstBuffer = true
 
                 body.byteStream().use { inputStream ->
-                    FileOutputStream(file, isPartial).use { outputStream ->
+                    val uriString = downloadItem.uri ?: downloadItem.filePath
+                    val outputStream = storageManager.getOutputStream(uriString, isPartial) 
+                        ?: throw IOException("Failed to open output stream")
+                    
+                    outputStream.use { stream ->
                         while (inputStream.read(buffer).also { bytesRead = it } != -1) {
                             if (!currentCoroutineContext().isActive) break
                             
                             // Check for magic numbers in the very first chunk
                             if (isFirstBuffer) {
-                                // Removed overly broad magic number check to prevent false positives for legitimate file types.
-                                // Security posture is maintained by ensuring files are not automatically executed.
                                 isFirstBuffer = false
                             }
 
-                            outputStream.write(buffer, 0, bytesRead)
+                            stream.write(buffer, 0, bytesRead)
                             currentDownloadedBytes += bytesRead
                             bytesSinceLastEmit += bytesRead
 
@@ -213,7 +223,7 @@ class DownloadManager @Inject constructor(
                                 bytesSinceLastEmit = 0L
                             }
                         }
-                        outputStream.flush()
+                        stream.flush()
                     }
                 }
 

@@ -23,6 +23,7 @@ data class DownloadEntity(
     val status: String, // Stored as String for Room compatibility
     val url: String,
     val filePath: String,
+    val uri: String? = null, // New field, nullable to support migration
     val createdAt: Long,
     val updatedAt: Long = System.currentTimeMillis(),
     val scheduleTime: Long? = null  // Timestamp when download should start (null = immediate)
@@ -39,6 +40,7 @@ data class DownloadEntity(
             status = DownloadStatus.valueOf(status),
             url = url,
             filePath = filePath,
+            uri = uri,
             createdAt = createdAt,
             scheduleTime = scheduleTime
         )
@@ -57,6 +59,7 @@ data class DownloadEntity(
                 status = downloadItem.status.name,
                 url = downloadItem.url,
                 filePath = downloadItem.filePath,
+                uri = downloadItem.uri,
                 createdAt = downloadItem.createdAt,
                 scheduleTime = downloadItem.scheduleTime
             )
