@@ -36,7 +36,12 @@ import java.io.File
  * - Called by DownloadService
  * - No direct UI dependencies
  */
-class DownloadNotificationHelper(private val context: Context) {
+import com.piumal.filedownloadmanager.storage.StorageManager
+// ...
+class DownloadNotificationHelper(
+    private val context: Context,
+    private val storageManager: StorageManager
+) {
 
     private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -433,15 +438,9 @@ class DownloadNotificationHelper(private val context: Context) {
      * Create intent to open downloaded file
      */
     private fun createOpenFileIntent(filePath: String): PendingIntent {
-        val file = File(filePath)
+        val uri = storageManager.getShareableUri(context, filePath)
 
-        val uri = try {
-            androidx.core.content.FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                file
-            )
-        } catch (_: Exception) {
+        if (uri == null) {
             return createOpenAppIntent()
         }
 

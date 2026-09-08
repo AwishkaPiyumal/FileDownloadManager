@@ -28,6 +28,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import com.piumal.filedownloadmanager.storage.StorageManager
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -35,6 +36,10 @@ class DownloadService : Service() {
 
     @Inject
     lateinit var downloadManager: DownloadManager
+
+    @Inject
+    lateinit var storageManager: StorageManager
+// ...
 
     @Inject
     lateinit var downloadDao: DownloadDao
@@ -128,7 +133,7 @@ class DownloadService : Service() {
         try {
             notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             Log.d(TAG, "NotificationManager obtained")
-            notificationHelper = DownloadNotificationHelper(this)
+            notificationHelper = DownloadNotificationHelper(this, storageManager)
             Log.d(TAG, "NotificationHelper initialized")
             serviceScope.launch {
                 try {

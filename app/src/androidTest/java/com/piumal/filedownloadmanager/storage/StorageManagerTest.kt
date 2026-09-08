@@ -51,4 +51,27 @@ class StorageManagerTest {
             assertTrue(content == "Hello, SAF!")
         }
     }
+
+    @Test
+    fun testGetShareableUriForApprovedFile() {
+        val approvedDir = File(context.getExternalFilesDir(null), "Download/File Download Manager")
+        approvedDir.mkdirs()
+        val file = File(approvedDir, "test.txt")
+        file.writeText("content")
+
+        val uri = storageManager.getShareableUri(context, file.absolutePath)
+        assertTrue(uri != null)
+    }
+
+    @Test
+    fun testGetShareableUriForUnapprovedFile() {
+        val unapprovedDir = File(context.cacheDir, "unapproved")
+        unapprovedDir.mkdirs()
+        val file = File(unapprovedDir, "malicious.txt")
+        file.writeText("content")
+
+        // This should fail to return a valid URI because it's not in the approved paths
+        val uri = storageManager.getShareableUri(context, file.absolutePath)
+        assertTrue(uri == null)
+    }
 }

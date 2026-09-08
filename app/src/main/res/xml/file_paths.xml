@@ -1,17 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- External storage paths -->
-    <external-path name="external_files" path="." />
-    <external-path name="download" path="Download/" />
-    <external-path name="download_manager" path="Download/FileDownloadManager/" />
-    <external-path name="download_manager_public" path="Download/File Download Manager/" />
-
-    <!-- App-specific external storage locations (safe for FileProvider sharing) -->
-    <external-files-path name="app_external_files" path="." />
-    <external-cache-path name="app_external_cache" path="." />
-
-    <!-- Internal storage paths -->
-    <files-path name="files" path="." />
-    <cache-path name="cache" path="." />
+    <external-path name="download_manager" path="Download/File Download Manager/" />
 </paths>
-
