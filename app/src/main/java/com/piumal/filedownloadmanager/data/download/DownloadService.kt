@@ -452,14 +452,18 @@ class DownloadService : Service() {
     }
 
     private fun cancelDownload(downloadId: String) {
+        Log.d(TAG, "=== CANCEL DOWNLOAD CALLED: $downloadId ===")
         activeDownloads[downloadId]?.cancel()
         activeDownloads.remove(downloadId)
         serviceScope.launch {
-            downloadDao.updateStatus(downloadId, DownloadStatus.FAILED.name, System.currentTimeMillis())
+            // Update database status to CANCELLED
+            downloadDao.updateStatus(downloadId, DownloadStatus.CANCELLED.name, System.currentTimeMillis())
             downloadQueueManager.onDownloadComplete(downloadId)
+            
+            // Remove notification
+            notificationManager.cancel(notificationHelper.getNotificationIdForDownload(downloadId))
+            checkAndStopService()
         }
-        notificationManager.cancel(notificationHelper.getNotificationIdForDownload(downloadId))
-        checkAndStopService()
     }
 
     private fun resumeAllPendingDownloads() {

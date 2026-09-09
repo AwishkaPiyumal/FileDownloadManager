@@ -10,6 +10,7 @@ import com.piumal.filedownloadmanager.domain.util.ContentValidator
 import com.piumal.filedownloadmanager.domain.util.DownloadStoragePaths
 import com.piumal.filedownloadmanager.domain.util.FileNameSanitizer
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -114,6 +115,13 @@ class DownloadManager @Inject constructor(
             }
 
             val call = okHttpClient.newCall(requestBuilder.build())
+            
+            // Add cancellation support
+            val job = currentCoroutineContext()[Job]
+            job?.invokeOnCompletion { 
+                call.cancel()
+            }
+            
             var response: Response = call.execute()
 
             // Handle HTTP 416 (Range Not Satisfiable)
@@ -236,9 +244,16 @@ class DownloadManager @Inject constructor(
             val currentSize = if (file.exists()) file.length() else 0L
             emit(DownloadProgress(currentSize, downloadItem.totalSize, DownloadStatus.FAILED, "Network error during download"))
         } catch (e: Exception) {
-            val file = File(downloadItem.filePath.ifBlank { DownloadStoragePaths.getDownloadFilePath(safeFileName) })
-            val currentSize = if (file.exists()) file.length() else 0L
-            emit(DownloadProgress(currentSize, downloadItem.totalSize, DownloadStatus.FAILED, "Unexpected error during download"))
+            if (e is kotlinx.coroutines.CancellationException) {
+                // Handle cancellation: delete partial file
+                val uriString = downloadItem.uri ?: downloadItem.filePath
+                storageManager.delete(uriString)
+                emit(DownloadProgress(0, downloadItem.totalSize, DownloadStatus.CANCELLED))
+            } else {
+                val file = File(downloadItem.filePath.ifBlank { DownloadStoragePaths.getDownloadFilePath(safeFileName) })
+                val currentSize = if (file.exists()) file.length() else 0L
+                emit(DownloadProgress(currentSize, downloadItem.totalSize, DownloadStatus.FAILED, "Unexpected error during download"))
+            }
         }
     }.flowOn(Dispatchers.IO)
 
