@@ -2,6 +2,7 @@ package com.piumal.filedownloadmanager.storage
 
 import android.content.Context
 import android.net.Uri
+import com.piumal.filedownloadmanager.domain.util.DownloadStoragePaths
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -22,7 +23,6 @@ interface StorageManager {
  * Implementation of StorageManager.
  */
 class StorageManagerImpl(private val context: Context) : StorageManager {
-    // ... existing implementations ...
 
     override fun getShareableUri(context: Context, uriString: String): Uri? {
         return if (uriString.startsWith("content://")) {
@@ -30,27 +30,27 @@ class StorageManagerImpl(private val context: Context) : StorageManager {
         } else {
             // Fallback for local files using FileProvider
             try {
+                val file = java.io.File(uriString)
+                FileOperations.checkContainment(file, DownloadStoragePaths.getDownloadDirectory())
                 androidx.core.content.FileProvider.getUriForFile(
                     context,
                     "${context.packageName}.fileprovider",
-                    java.io.File(uriString)
+                    file
                 )
             } catch (e: Exception) {
                 null
             }
         }
     }
-// ...
     
     override fun exists(uriString: String): Boolean {
-        // Simple implementation for now.
-        // For local files, we might need to be careful with path traversal.
-        // For SAF, we use ContentResolver.
         return try {
             if (uriString.startsWith("content://")) {
                 context.contentResolver.openFileDescriptor(Uri.parse(uriString), "r")?.use { true } ?: false
             } else {
-                java.io.File(uriString).exists()
+                val file = java.io.File(uriString)
+                FileOperations.checkContainment(file, DownloadStoragePaths.getDownloadDirectory())
+                file.exists()
             }
         } catch (e: Exception) {
             false
@@ -58,43 +58,59 @@ class StorageManagerImpl(private val context: Context) : StorageManager {
     }
 
     override fun getInputStream(uriString: String): InputStream? {
-        return if (uriString.startsWith("content://")) {
-            context.contentResolver.openInputStream(Uri.parse(uriString))
-        } else {
-            java.io.File(uriString).inputStream()
+        return try {
+            if (uriString.startsWith("content://")) {
+                context.contentResolver.openInputStream(Uri.parse(uriString))
+            } else {
+                val file = java.io.File(uriString)
+                FileOperations.checkContainment(file, DownloadStoragePaths.getDownloadDirectory())
+                file.inputStream()
+            }
+        } catch (e: Exception) {
+            null
         }
     }
 
     override fun getOutputStream(uriString: String, append: Boolean): OutputStream? {
-        return if (uriString.startsWith("content://")) {
-            val mode = if (append) "wa" else "w"
-            context.contentResolver.openOutputStream(Uri.parse(uriString), mode)
-        } else {
-            java.io.FileOutputStream(java.io.File(uriString), append)
+        return try {
+            if (uriString.startsWith("content://")) {
+                val mode = if (append) "wa" else "w"
+                context.contentResolver.openOutputStream(Uri.parse(uriString), mode)
+            } else {
+                val file = java.io.File(uriString)
+                FileOperations.checkContainment(file, DownloadStoragePaths.getDownloadDirectory())
+                java.io.FileOutputStream(file, append)
+            }
+        } catch (e: Exception) {
+            null
         }
     }
 
     override fun delete(uriString: String): Boolean {
-        return if (uriString.startsWith("content://")) {
-            try {
+        return try {
+            if (uriString.startsWith("content://")) {
                 androidx.documentfile.provider.DocumentFile.fromSingleUri(context, Uri.parse(uriString))?.delete() ?: false
-            } catch (e: Exception) {
-                false
+            } else {
+                val file = java.io.File(uriString)
+                FileOperations.checkContainment(file, DownloadStoragePaths.getDownloadDirectory())
+                file.delete()
             }
-        } else {
-            java.io.File(uriString).delete()
+        } catch (e: Exception) {
+            false
         }
     }
 
     override fun getLength(uriString: String): Long {
-        return if (uriString.startsWith("content://")) {
-            try {
+        return try {
+            if (uriString.startsWith("content://")) {
                 context.contentResolver.openFileDescriptor(Uri.parse(uriString), "r")?.use { it.statSize } ?: 0L
-            } catch (e: Exception) {
-                0L
+            } else {
+                val file = java.io.File(uriString)
+                FileOperations.checkContainment(file, DownloadStoragePaths.getDownloadDirectory())
+                file.length()
             }
-        } else {
-            java.io.File(uriString).length()
+        } catch (e: Exception) {
+            0L
         }
     }
 }

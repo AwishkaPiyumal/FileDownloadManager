@@ -5,6 +5,8 @@ import android.content.ClipData
 import android.content.Intent
 import android.content.Context
 import android.webkit.MimeTypeMap
+import com.piumal.filedownloadmanager.domain.util.DownloadStoragePaths
+import com.piumal.filedownloadmanager.storage.FileOperations
 import com.piumal.filedownloadmanager.data.download.DownloadManager
 import com.piumal.filedownloadmanager.data.download.DownloadService
 import com.piumal.filedownloadmanager.data.local.dao.DownloadDao
@@ -75,6 +77,8 @@ class DownloadRepositoryImpl @Inject constructor(
     override suspend fun copyDownload(item: DownloadItem, destinationFolderPath: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val sourceFile = java.io.File(item.filePath)
+            // Validate source file containment
+            FileOperations.checkContainment(sourceFile, DownloadStoragePaths.getDownloadDirectory())
             if (!sourceFile.exists()) throw Exception("Source file not found")
             try {
                 if (destinationFolderPath.startsWith("content://")) {
@@ -94,6 +98,9 @@ class DownloadRepositoryImpl @Inject constructor(
                 } else {
                     // Handle Standard File I/O (Fallback)
                     val destDir = java.io.File(destinationFolderPath)
+                    // Validate destination directory containment
+                    FileOperations.checkContainment(destDir, DownloadStoragePaths.getDownloadDirectory())
+                    
                     if (!destDir.exists()) destDir.mkdirs()
                     val destFile = java.io.File(destDir, sourceFile.name)
                     sourceFile.inputStream().use { input ->

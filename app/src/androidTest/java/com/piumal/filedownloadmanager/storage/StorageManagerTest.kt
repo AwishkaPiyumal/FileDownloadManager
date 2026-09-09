@@ -53,6 +53,16 @@ class StorageManagerTest {
     }
 
     @Test
+    fun testExistsForUnapprovedFileReturnsFalse() {
+        val unapprovedDir = File(context.cacheDir, "unapproved")
+        unapprovedDir.mkdirs()
+        val file = File(unapprovedDir, "malicious.txt")
+        file.writeText("content")
+
+        assertFalse(storageManager.exists(file.absolutePath))
+    }
+
+    @Test
     fun testGetShareableUriForApprovedFile() {
         val approvedDir = File(context.getExternalFilesDir(null), "Download/File Download Manager")
         approvedDir.mkdirs()
