@@ -49,6 +49,7 @@ class DownloadManager @Inject constructor(
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
+        .followRedirects(true)
         .addInterceptor { chain ->
             val request = chain.request()
             val response = chain.proceed(request)
@@ -64,14 +65,21 @@ class DownloadManager @Inject constructor(
                         request.url.resolve(location)?.toString()
                     }
                     
-                    if (finalUrl != null && !ContentValidator.isSecureConnection(finalUrl)) {
-                        response.close()
-                        throw IOException("HTTPS to HTTP redirect is not allowed")
+                    if (finalUrl != null) {
+                        // Check for downgrade
+                        if (request.url.isHttps && finalUrl.startsWith("http://", ignoreCase = true)) {
+                            response.close()
+                            throw IOException("HTTPS to HTTP redirect is not allowed")
+                        }
+                        
+                        // Check scheme
+                        if (!finalUrl.startsWith("http://", ignoreCase = true) && !finalUrl.startsWith("https://", ignoreCase = true)) {
+                            response.close()
+                            throw IOException("Redirect to unsupported scheme is not allowed")
+                        }
                     }
                 }
             }
-            
-            // Limit redirects to 5 is handled by OkHttp by default.
             
             response
         }
