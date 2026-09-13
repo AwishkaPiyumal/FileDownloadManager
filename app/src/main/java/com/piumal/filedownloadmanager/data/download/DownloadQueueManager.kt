@@ -1,7 +1,7 @@
 package com.piumal.filedownloadmanager.data.download
 
 import android.content.Context
-import android.util.Log
+import com.piumal.filedownloadmanager.util.Logger
 import com.piumal.filedownloadmanager.data.local.dao.DownloadDao
 import com.piumal.filedownloadmanager.domain.model.DownloadStatus
 import com.piumal.filedownloadmanager.domain.repository.SettingsRepository
@@ -54,7 +54,7 @@ class DownloadQueueManager @Inject constructor(
         // Observe parallel limit changes and refresh queue
         scope.launch {
             settingsRepository.observeParallelDownloadLimit().collect {
-                Log.d(TAG, "Parallel download limit changed to $it, refreshing queue")
+                Logger.d(TAG, "Parallel download limit changed to $it, refreshing queue")
                 refreshQueue()
             }
         }
@@ -75,7 +75,7 @@ class DownloadQueueManager @Inject constructor(
         val limit = getParallelLimit()
         val activeCount = _activeDownloads.value.size
         val canStart = activeCount < limit
-        Log.d(TAG, "canStartDownload: active=$activeCount, limit=$limit, canStart=$canStart")
+        Logger.d(TAG, "canStartDownload: active=$activeCount, limit=$limit, canStart=$canStart")
         return canStart
     }
 
@@ -88,16 +88,16 @@ class DownloadQueueManager @Inject constructor(
         val limit = getParallelLimit()
         val activeCount = _activeDownloads.value.size
 
-        Log.d(TAG, "tryStartDownload: id=$downloadId, active=$activeCount, limit=$limit")
+        Logger.d(TAG, "tryStartDownload: id=$downloadId, active=$activeCount, limit=$limit")
 
         return if (activeCount < limit) {
             // Can start immediately
             _activeDownloads.value = _activeDownloads.value + downloadId
-            Log.d(TAG, "Download $downloadId started, now active: ${_activeDownloads.value.size}")
+            Logger.d(TAG, "Download $downloadId started, now active: ${_activeDownloads.value.size}")
             true
         } else {
             // Queue this download - update status to QUEUED
-            Log.d(TAG, "Download $downloadId queued (limit reached)")
+            Logger.d(TAG, "Download $downloadId queued (limit reached)")
             downloadDao.updateStatus(
                 id = downloadId,
                 status = DownloadStatus.QUEUED.name,
@@ -113,9 +113,9 @@ class DownloadQueueManager @Inject constructor(
      * @param downloadId The download ID that completed
      */
     suspend fun onDownloadComplete(downloadId: String) = mutex.withLock {
-        Log.d(TAG, "onDownloadComplete: $downloadId")
+        Logger.d(TAG, "onDownloadComplete: $downloadId")
         _activeDownloads.value = _activeDownloads.value - downloadId
-        Log.d(TAG, "Download $downloadId removed from active, now active: ${_activeDownloads.value.size}")
+        Logger.d(TAG, "Download $downloadId removed from active, now active: ${_activeDownloads.value.size}")
 
         // Start next queued download
         startNextQueuedDownload()
@@ -127,9 +127,9 @@ class DownloadQueueManager @Inject constructor(
      * @param downloadId The download ID that was paused
      */
     suspend fun onDownloadPaused(downloadId: String) = mutex.withLock {
-        Log.d(TAG, "onDownloadPaused: $downloadId")
+        Logger.d(TAG, "onDownloadPaused: $downloadId")
         _activeDownloads.value = _activeDownloads.value - downloadId
-        Log.d(TAG, "Download $downloadId paused, now active: ${_activeDownloads.value.size}")
+        Logger.d(TAG, "Download $downloadId paused, now active: ${_activeDownloads.value.size}")
 
         // Start next queued download
         startNextQueuedDownload()
@@ -144,7 +144,7 @@ class DownloadQueueManager @Inject constructor(
         val currentActive = _activeDownloads.value.size
 
         if (currentActive >= limit) {
-            Log.d(TAG, "Still at limit, not starting next queued")
+            Logger.d(TAG, "Still at limit, not starting next queued")
             return
         }
 
@@ -152,7 +152,7 @@ class DownloadQueueManager @Inject constructor(
         val queuedDownloads = downloadDao.getDownloadsByStatusOrderedByCreated(DownloadStatus.QUEUED.name)
 
         if (queuedDownloads.isEmpty()) {
-            Log.d(TAG, "No queued downloads to start")
+            Logger.d(TAG, "No queued downloads to start")
             return
         }
 
@@ -161,7 +161,7 @@ class DownloadQueueManager @Inject constructor(
         val downloadsToStart = queuedDownloads.take(slotsAvailable)
 
         downloadsToStart.forEach { download ->
-            Log.d(TAG, "Starting queued download: ${download.fileName} (ID: ${download.id})")
+            Logger.d(TAG, "Starting queued download: ${download.fileName} (ID: ${download.id})")
             _activeDownloads.value = _activeDownloads.value + download.id
 
             // Update status and trigger download via service
@@ -183,7 +183,7 @@ class DownloadQueueManager @Inject constructor(
     fun refreshQueue() {
         scope.launch {
             mutex.withLock {
-                Log.d(TAG, "Refreshing queue after settings change")
+                Logger.d(TAG, "Refreshing queue after settings change")
                 startNextQueuedDownload()
             }
         }
@@ -203,7 +203,7 @@ class DownloadQueueManager @Inject constructor(
      * Clear all active downloads (for service restart scenarios)
      */
     suspend fun clearActiveDownloads() = mutex.withLock {
-        Log.d(TAG, "Clearing all active downloads")
+        Logger.d(TAG, "Clearing all active downloads")
         _activeDownloads.value = emptySet()
     }
 
@@ -212,7 +212,7 @@ class DownloadQueueManager @Inject constructor(
      * Marks any DOWNLOADING items as QUEUED if they're not actually running
      */
     suspend fun syncWithDatabase() = mutex.withLock {
-        Log.d(TAG, "Syncing active downloads with database")
+        Logger.d(TAG, "Syncing active downloads with database")
 
         // Get all downloads marked as DOWNLOADING in database
         val downloadingItems = downloadDao.getDownloadsByStatusOrderedByCreated(DownloadStatus.DOWNLOADING.name)
@@ -221,7 +221,7 @@ class DownloadQueueManager @Inject constructor(
         // Mark them as QUEUED so they can restart properly
         downloadingItems.forEach { download ->
             if (!_activeDownloads.value.contains(download.id)) {
-                Log.d(TAG, "Found orphaned downloading item: ${download.id}, marking as QUEUED")
+                Logger.d(TAG, "Found orphaned downloading item: ${download.id}, marking as QUEUED")
                 downloadDao.updateStatus(
                     id = download.id,
                     status = DownloadStatus.QUEUED.name,
@@ -234,3 +234,4 @@ class DownloadQueueManager @Inject constructor(
         startNextQueuedDownload()
     }
 }
+

@@ -1,6 +1,6 @@
 package com.piumal.filedownloadmanager.ui.downloads.viewmodel
 
-import android.util.Log
+import com.piumal.filedownloadmanager.util.Logger
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.piumal.filedownloadmanager.domain.usecase.download.PauseAllDownloadsUseCase
@@ -116,10 +116,10 @@ class MoreOptionsViewModel @Inject constructor(
      */
     private fun handlePauseAll() {
         viewModelScope.launch {
-            Log.d(TAG, "Pause All action triggered")
+            Logger.d(TAG, "Pause All action triggered")
             pauseAllDownloadsUseCase().fold(
                 onSuccess = { pausedCount ->
-                    Log.d(TAG, "Successfully paused $pausedCount downloads")
+                    Logger.d(TAG, "Successfully paused $pausedCount downloads")
                     val message = if (pausedCount > 0) {
                         "Paused $pausedCount download${if (pausedCount > 1) "s" else ""}"
                     } else {
@@ -128,7 +128,7 @@ class MoreOptionsViewModel @Inject constructor(
                     _toastMessage.emit(message)
                 },
                 onFailure = { error ->
-                    Log.e(TAG, "Failed to pause downloads: ${error.message}")
+                    Logger.e(TAG, "Failed to pause downloads: ${error.message}")
                     _toastMessage.emit("Failed to pause downloads")
                 }
             )
@@ -141,10 +141,10 @@ class MoreOptionsViewModel @Inject constructor(
      */
     private fun handleResumeAll() {
         viewModelScope.launch {
-            Log.d(TAG, "Resume All action triggered")
+            Logger.d(TAG, "Resume All action triggered")
             resumeAllDownloadsUseCase().fold(
                 onSuccess = { resumedCount ->
-                    Log.d(TAG, "Successfully resumed $resumedCount downloads")
+                    Logger.d(TAG, "Successfully resumed $resumedCount downloads")
                     val message = if (resumedCount > 0) {
                         "Resumed $resumedCount download${if (resumedCount > 1) "s" else ""}"
                     } else {
@@ -153,7 +153,7 @@ class MoreOptionsViewModel @Inject constructor(
                     _toastMessage.emit(message)
                 },
                 onFailure = { error ->
-                    Log.e(TAG, "Failed to resume downloads: ${error.message}")
+                    Logger.e(TAG, "Failed to resume downloads: ${error.message}")
                     _toastMessage.emit("Failed to resume downloads")
                 }
             )
@@ -166,10 +166,10 @@ class MoreOptionsViewModel @Inject constructor(
      */
     private fun handleRetryAll() {
         viewModelScope.launch {
-            Log.d(TAG, "Retry All action triggered")
+            Logger.d(TAG, "Retry All action triggered")
             retryAllDownloadsUseCase().fold(
                 onSuccess = { retriedCount ->
-                    Log.d(TAG, "Successfully retried $retriedCount downloads")
+                    Logger.d(TAG, "Successfully retried $retriedCount downloads")
                     val message = if (retriedCount > 0) {
                         "Retrying $retriedCount download${if (retriedCount > 1) "s" else ""}"
                     } else {
@@ -178,7 +178,7 @@ class MoreOptionsViewModel @Inject constructor(
                     _toastMessage.emit(message)
                 },
                 onFailure = { error ->
-                    Log.e(TAG, "Failed to retry downloads: ${error.message}")
+                    Logger.e(TAG, "Failed to retry downloads: ${error.message}")
                     _toastMessage.emit("Failed to retry downloads")
                 }
             )
@@ -219,4 +219,5 @@ class MoreOptionsViewModel @Inject constructor(
         }
     }
 }
+
 

@@ -174,7 +174,7 @@ fun RingtonePickerDialog(
                     // Find the display name for the selected ringtone
                     val selectedRingtoneInfo = ringtones.value.find { it.uri == selectedRingtone.value }
                     val displayName = selectedRingtoneInfo?.displayName ?: "Unknown Ringtone"
-                    android.util.Log.d("RingtonePickerDialog", "Selected ringtone: uri=${selectedRingtone.value}, name=$displayName")
+                    android.util.Logger.d("RingtonePickerDialog", "Selected ringtone: uri=${selectedRingtone.value}, name=$displayName")
                     // Pass both URI and display name
                     onRingtoneSelected(selectedRingtone.value to displayName)
                     onDismiss()
@@ -272,12 +272,12 @@ private fun loadSystemNotificationRingtones(context: Context): List<RingtoneInfo
                         )
                     )
                 } catch (e: Exception) {
-                    android.util.Log.e("RingtonePickerDialog", "Error loading ringtone", e)
+                    android.util.Logger.e("RingtonePickerDialog", "Error loading ringtone", e)
                 }
             }
         }
     } catch (e: Exception) {
-        android.util.Log.e("RingtonePickerDialog", "Error loading system ringtones", e)
+        android.util.Logger.e("RingtonePickerDialog", "Error loading system ringtones", e)
     }
 
     return ringtones
@@ -309,7 +309,7 @@ private fun playRingtone(context: Context, mediaPlayer: MediaPlayer, ringtoneUri
         mediaPlayer.prepare()
         mediaPlayer.start()
     } catch (e: Exception) {
-        android.util.Log.e("RingtonePickerDialog", "Error playing ringtone: ${e.message}", e)
+        android.util.Logger.e("RingtonePickerDialog", "Error playing ringtone: ${e.message}", e)
     }
 }
 
@@ -323,4 +323,5 @@ fun getRingtoneDisplayName(uri: String): String {
         else -> "Custom Sound"
     }
 }
+
 

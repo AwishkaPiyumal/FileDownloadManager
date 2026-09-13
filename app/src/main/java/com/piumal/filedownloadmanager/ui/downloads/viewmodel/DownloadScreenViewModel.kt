@@ -1,6 +1,6 @@
 package com.piumal.filedownloadmanager.ui.downloads.viewmodel
 
-import android.util.Log
+import com.piumal.filedownloadmanager.util.Logger
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.piumal.filedownloadmanager.domain.model.DownloadConfig
@@ -90,16 +90,16 @@ class DownloadScreenViewModel @Inject constructor(
      * Initialize - observe downloads from repository and settings
      */
     init {
-        Log.d("DownloadScreenVM", "ViewModel init started")
+        Logger.d("DownloadScreenVM", "ViewModel init started")
         try {
             // Observe hidden IDs first so we have persisted set available
             observeHiddenCompletedIds()
             observeAutoRemoveSetting()
             observeAutoRetrySetting()
             observeDownloads()
-            Log.d("DownloadScreenVM", "ViewModel init completed successfully")
+            Logger.d("DownloadScreenVM", "ViewModel init completed successfully")
         } catch (e: Exception) {
-            Log.e("DownloadScreenVM", "Error during ViewModel init", e)
+            Logger.e("DownloadScreenVM", "Error during ViewModel init", e)
         }
     }
 
@@ -119,7 +119,7 @@ class DownloadScreenViewModel @Inject constructor(
                         val currentAll = try {
                             downloadRepository.getAllDownloads().first()
                         } catch (e: Exception) {
-                            Log.e("DownloadScreenVM", "Failed to get snapshot of downloads", e)
+                            Logger.e("DownloadScreenVM", "Failed to get snapshot of downloads", e)
                             _uiState.value.allDownloads
                         }
                         val toHideNow = currentAll.filter { it.isCompleted() && !hiddenCompletedIds.contains(it.id) }.map { it.id }.toSet()
@@ -128,9 +128,9 @@ class DownloadScreenViewModel @Inject constructor(
                                 addHiddenCompletedIdsUseCase(toHideNow)
                                 // update local set immediately to avoid waiting for prefs listener
                                 hiddenCompletedIds = hiddenCompletedIds + toHideNow
-                                Log.d("DownloadScreenVM", "Persisted hidden IDs on toggle: $toHideNow. Hidden now total=${hiddenCompletedIds.size}")
+                                Logger.d("DownloadScreenVM", "Persisted hidden IDs on toggle: $toHideNow. Hidden now total=${hiddenCompletedIds.size}")
                             } catch (e: Exception) {
-                                Log.e("DownloadScreenVM", "Failed to persist hidden completed ids on toggle", e)
+                                Logger.e("DownloadScreenVM", "Failed to persist hidden completed ids on toggle", e)
                             }
                         }
 
@@ -154,12 +154,12 @@ class DownloadScreenViewModel @Inject constructor(
                     if (!value) {
                         // Do not un-hide previously hidden items when the user toggles the setting off.
                         // We intentionally avoid modifying displayedDownloads here so hidden items remain hidden.
-                        Log.d("DownloadScreenVM", "Auto-remove toggled OFF; preserving previously hidden completed items (count=${hiddenCompletedIds.size})")
+                        Logger.d("DownloadScreenVM", "Auto-remove toggled OFF; preserving previously hidden completed items (count=${hiddenCompletedIds.size})")
                     }
 
                  }
              } catch (e: Exception) {
-                 Log.e("DownloadScreenVM", "Error observing auto-remove setting", e)
+                 Logger.e("DownloadScreenVM", "Error observing auto-remove setting", e)
              }
          }
      }
@@ -174,7 +174,7 @@ class DownloadScreenViewModel @Inject constructor(
                     autoRetryEnabled = value
                 }
             } catch (e: Exception) {
-                Log.e("DownloadScreenVM", "Error observing auto-retry setting", e)
+                Logger.e("DownloadScreenVM", "Error observing auto-retry setting", e)
             }
         }
     }
@@ -200,7 +200,7 @@ class DownloadScreenViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                Log.e("DownloadScreenVM", "Error observing hidden completed ids", e)
+                Logger.e("DownloadScreenVM", "Error observing hidden completed ids", e)
             }
         }
     }
@@ -225,9 +225,9 @@ class DownloadScreenViewModel @Inject constructor(
                                     // call repository retry (this should schedule/start retry)
                                     downloadRepository.retryDownload(failedId)
                                     retriedFailedIds.add(failedId)
-                                    Log.d("DownloadScreenVM", "Auto-retry triggered for: $failedId")
+                                    Logger.d("DownloadScreenVM", "Auto-retry triggered for: $failedId")
                                 } catch (e: Exception) {
-                                    Log.e("DownloadScreenVM", "Failed to auto-retry download $failedId", e)
+                                    Logger.e("DownloadScreenVM", "Failed to auto-retry download $failedId", e)
                                 }
                             }
                         }
@@ -253,7 +253,7 @@ class DownloadScreenViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                Log.e("DownloadScreenVM", "Error observing downloads", e)
+                Logger.e("DownloadScreenVM", "Error observing downloads", e)
                 _uiState.update { it.copy(isLoading = false, downloadError = "Failed to load downloads") }
             }
         }
@@ -272,7 +272,7 @@ class DownloadScreenViewModel @Inject constructor(
                 try {
                     addHiddenCompletedIdsUseCase(toHideNow)
                 } catch (e: Exception) {
-                    Log.e("DownloadScreenVM", "Failed to persist hidden completed ids", e)
+                    Logger.e("DownloadScreenVM", "Failed to persist hidden completed ids", e)
                 }
             }
             result = result.filter { !it.isCompleted() }
@@ -288,15 +288,15 @@ class DownloadScreenViewModel @Inject constructor(
      * @param forceNewDownload If true, forces new download with renamed file
      */
     fun startDownload(config: DownloadConfig, forceNewDownload: Boolean = false) {
-        Log.d("DownloadScreenVM", "=== startDownload called ===")
-        Log.d("DownloadScreenVM", "URL: ${config.url}")
-        Log.d("DownloadScreenVM", "FileName: ${config.fileName}")
-        Log.d("DownloadScreenVM", "FilePath: ${config.filePath}")
-        Log.d("DownloadScreenVM", "ForceNewDownload: $forceNewDownload")
+        Logger.d("DownloadScreenVM", "=== startDownload called ===")
+        Logger.d("DownloadScreenVM", "URL: ${config.url}")
+        Logger.d("DownloadScreenVM", "FileName: ${config.fileName}")
+        Logger.d("DownloadScreenVM", "FilePath: ${config.filePath}")
+        Logger.d("DownloadScreenVM", "ForceNewDownload: $forceNewDownload")
 
         viewModelScope.launch {
             _uiState.update { it.copy(isDownloadInProgress = true, downloadError = null) }
-            Log.d("DownloadScreenVM", "Starting download use case...")
+            Logger.d("DownloadScreenVM", "Starting download use case...")
 
             startDownloadUseCase(
                 url = config.url,
@@ -305,17 +305,17 @@ class DownloadScreenViewModel @Inject constructor(
                 scheduleTime = config.scheduleTime,
                 forceNewDownload = forceNewDownload
             ).collect { result ->
-                Log.d("DownloadScreenVM", "Received result from use case")
+                Logger.d("DownloadScreenVM", "Received result from use case")
                 result.onSuccess { downloadItem ->
                     // Download started successfully
-                    Log.d("DownloadScreenVM", "Download started successfully: ID=${downloadItem.id}, Status=${downloadItem.status}")
+                    Logger.d("DownloadScreenVM", "Download started successfully: ID=${downloadItem.id}, Status=${downloadItem.status}")
                     val message = if (config.scheduleTime != null) {
                         "Download scheduled: ${downloadItem.fileName}"
                     } else {
                         "Download started: ${downloadItem.fileName}"
                     }
 
-                    Log.d("DownloadScreenVM", "Success message: $message")
+                    Logger.d("DownloadScreenVM", "Success message: $message")
 
                     _uiState.update {
                         it.copy(
@@ -327,18 +327,18 @@ class DownloadScreenViewModel @Inject constructor(
                             existingFileName = null
                         )
                     }
-                    Log.d("DownloadScreenVM", "UI state updated with success")
+                    Logger.d("DownloadScreenVM", "UI state updated with success")
                     // Clear success message after 3 seconds
                     kotlinx.coroutines.delay(3.seconds)
                     _uiState.update { it.copy(downloadSuccess = false, successMessage = null) }
                 }.onFailure { error ->
                     // Download failed to start
-                    Log.e("DownloadScreenVM", "Download failed to start", error)
+                    Logger.e("DownloadScreenVM", "Download failed to start", error)
 
                     // Check if it's a FileAlreadyExistsException
                     if (error is FileAlreadyExistsException) {
                         // Show file exists dialog
-                        Log.d("DownloadScreenVM", "File already exists, showing confirmation dialog")
+                        Logger.d("DownloadScreenVM", "File already exists, showing confirmation dialog")
                         _uiState.update {
                             it.copy(
                                 isDownloadInProgress = false,
@@ -356,11 +356,11 @@ class DownloadScreenViewModel @Inject constructor(
                                 downloadError = errorMessage
                             )
                         }
-                        Log.d("DownloadScreenVM", "UI state updated with error: ${error.message}")
+                        Logger.d("DownloadScreenVM", "UI state updated with error: ${error.message}")
                     }
                 }
             }
-            Log.d("DownloadScreenVM", "=== startDownload completed ===")
+            Logger.d("DownloadScreenVM", "=== startDownload completed ===")
         }
     }
 
@@ -371,7 +371,7 @@ class DownloadScreenViewModel @Inject constructor(
     fun continueDownloadWithRename() {
         val config = _uiState.value.pendingDownloadConfig
         if (config != null) {
-            Log.d("DownloadScreenVM", "Continuing download with rename")
+            Logger.d("DownloadScreenVM", "Continuing download with rename")
             startDownload(config, forceNewDownload = true)
         }
     }
@@ -464,9 +464,9 @@ class DownloadScreenViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 downloadRepository.pauseDownload(downloadId)
-                Log.d("DownloadScreenVM", "Download paused: $downloadId")
+                Logger.d("DownloadScreenVM", "Download paused: $downloadId")
             } catch (e: Exception) {
-                Log.e("DownloadScreenVM", "Error pausing download", e)
+                Logger.e("DownloadScreenVM", "Error pausing download", e)
             }
         }
     }
@@ -478,9 +478,9 @@ class DownloadScreenViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 downloadRepository.resumeDownload(downloadId)
-                Log.d("DownloadScreenVM", "Download resumed: $downloadId")
+                Logger.d("DownloadScreenVM", "Download resumed: $downloadId")
             } catch (e: Exception) {
-                Log.e("DownloadScreenVM", "Error resuming download", e)
+                Logger.e("DownloadScreenVM", "Error resuming download", e)
             }
         }
     }
@@ -492,9 +492,9 @@ class DownloadScreenViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 downloadRepository.retryDownload(downloadId)
-                Log.d("DownloadScreenVM", "Download retried: $downloadId")
+                Logger.d("DownloadScreenVM", "Download retried: $downloadId")
             } catch (e: Exception) {
-                Log.e("DownloadScreenVM", "Error retrying download", e)
+                Logger.e("DownloadScreenVM", "Error retrying download", e)
             }
         }
     }
@@ -599,13 +599,13 @@ class DownloadScreenViewModel @Inject constructor(
                         _uiState.update { it.copy(downloadSuccess = false, successMessage = null) }
                     }.onFailure { err ->
                         val errorMessage = err.message ?: err.toString()
-                        Log.e("DownloadScreenVM", "Failed to copy file: $errorMessage")
+                        Logger.e("DownloadScreenVM", "Failed to copy file: $errorMessage")
                         _uiState.update { it.copy(downloadError = "Failed to copy file: $errorMessage") }
                     }
                 }
             } catch (e: Exception) {
                 val errorMessage = e.message ?: e.toString()
-                Log.e("DownloadScreenVM", "Error during copyToWithDestination", e)
+                Logger.e("DownloadScreenVM", "Error during copyToWithDestination", e)
                 _uiState.update { it.copy(downloadError = "Copy failed: $errorMessage") }
             }
         }
@@ -647,11 +647,11 @@ class DownloadScreenViewModel @Inject constructor(
                     kotlinx.coroutines.delay(2500.milliseconds)
                     _uiState.update { it.copy(downloadSuccess = false, successMessage = null) }
                 }.onFailure { err ->
-                    Log.e("DownloadScreenVM", "Rename failed: ${err.message}")
+                    Logger.e("DownloadScreenVM", "Rename failed: ${err.message}")
                     _uiState.update { it.copy(downloadError = "Failed to rename: ${err.message}") }
                 }
             } catch (e: Exception) {
-                Log.e("DownloadScreenVM", "Error renaming file", e)
+                Logger.e("DownloadScreenVM", "Error renaming file", e)
                 _uiState.update { it.copy(downloadError = e.message ?: "Failed to rename file") }
             }
         }
@@ -668,7 +668,7 @@ class DownloadScreenViewModel @Inject constructor(
      */
     fun enterSelectionMode() {
         _uiState.update { it.copy(isSelectionMode = true) }
-        Log.d("DownloadScreenVM", "Entered selection mode")
+        Logger.d("DownloadScreenVM", "Entered selection mode")
     }
 
     /**
@@ -682,7 +682,7 @@ class DownloadScreenViewModel @Inject constructor(
                 selectedDownloadIds = emptySet()
             )
         }
-        Log.d("DownloadScreenVM", "Exited selection mode")
+        Logger.d("DownloadScreenVM", "Exited selection mode")
     }
 
     /**
@@ -708,7 +708,7 @@ class DownloadScreenViewModel @Inject constructor(
                 currentState.copy(selectedDownloadIds = newSelection)
             }
         }
-        Log.d("DownloadScreenVM", "Toggled selection for: $downloadId")
+        Logger.d("DownloadScreenVM", "Toggled selection for: $downloadId")
     }
 
     /**
@@ -742,7 +742,7 @@ class DownloadScreenViewModel @Inject constructor(
                 }
             }
         }
-        Log.d("DownloadScreenVM", "Long pressed item: $downloadId")
+        Logger.d("DownloadScreenVM", "Long pressed item: $downloadId")
     }
 
     /**
@@ -756,7 +756,7 @@ class DownloadScreenViewModel @Inject constructor(
                 selectedDownloadIds = allIds
             )
         }
-        Log.d("DownloadScreenVM", "Selected all downloads")
+        Logger.d("DownloadScreenVM", "Selected all downloads")
     }
 
     /**
@@ -778,7 +778,7 @@ class DownloadScreenViewModel @Inject constructor(
                 )
             }
         }
-        Log.d("DownloadScreenVM", "Toggled select all")
+        Logger.d("DownloadScreenVM", "Toggled select all")
     }
 
     /**
@@ -786,7 +786,7 @@ class DownloadScreenViewModel @Inject constructor(
      */
     fun deselectAll() {
         _uiState.update { it.copy(selectedDownloadIds = emptySet()) }
-        Log.d("DownloadScreenVM", "Deselected all downloads")
+        Logger.d("DownloadScreenVM", "Deselected all downloads")
     }
 
     // =============================================
@@ -800,7 +800,7 @@ class DownloadScreenViewModel @Inject constructor(
     fun showDeleteSelectedDialog() {
         if (_uiState.value.selectedDownloadIds.isNotEmpty()) {
             _uiState.update { it.copy(showDeleteSelectedDialog = true) }
-            Log.d("DownloadScreenVM", "Showing delete selected dialog")
+            Logger.d("DownloadScreenVM", "Showing delete selected dialog")
         }
     }
 
@@ -809,7 +809,7 @@ class DownloadScreenViewModel @Inject constructor(
      */
     fun dismissDeleteSelectedDialog() {
         _uiState.update { it.copy(showDeleteSelectedDialog = false) }
-        Log.d("DownloadScreenVM", "Dismissed delete selected dialog")
+        Logger.d("DownloadScreenVM", "Dismissed delete selected dialog")
     }
 
     /**
@@ -819,7 +819,7 @@ class DownloadScreenViewModel @Inject constructor(
     fun confirmDeleteSelected() {
         viewModelScope.launch {
             val selectedIds = _uiState.value.selectedDownloadIds
-            Log.d("DownloadScreenVM", "Confirming delete of ${selectedIds.size} items")
+            Logger.d("DownloadScreenVM", "Confirming delete of ${selectedIds.size} items")
 
             // Hide dialog first
             _uiState.update { it.copy(showDeleteSelectedDialog = false) }
@@ -827,7 +827,7 @@ class DownloadScreenViewModel @Inject constructor(
             // Execute deletion
             deleteSelectedDownloadsUseCase(selectedIds).fold(
                 onSuccess = { deletedCount ->
-                    Log.d("DownloadScreenVM", "Successfully deleted $deletedCount downloads")
+                    Logger.d("DownloadScreenVM", "Successfully deleted $deletedCount downloads")
                     // Exit selection mode after successful deletion
                     _uiState.update {
                         it.copy(
@@ -842,7 +842,7 @@ class DownloadScreenViewModel @Inject constructor(
                     _uiState.update { it.copy(downloadSuccess = false, successMessage = null) }
                 },
                 onFailure = { error ->
-                    Log.e("DownloadScreenVM", "Failed to delete downloads: ${error.message}")
+                    Logger.e("DownloadScreenVM", "Failed to delete downloads: ${error.message}")
                     _uiState.update {
                         it.copy(
                             downloadError = "Failed to delete files: ${error.message}"
@@ -907,7 +907,7 @@ class DownloadScreenViewModel @Inject constructor(
         // Compute current failed IDs and retain only those in the retried set
         val failedIds = currentDownloads.filter { it.isFailed() }.map { it.id }.toSet()
         retriedFailedIds.retainAll(failedIds)
-        Log.d("DownloadScreenVM", "RetriedFailedIds after cleanup: $retriedFailedIds")
+        Logger.d("DownloadScreenVM", "RetriedFailedIds after cleanup: $retriedFailedIds")
     }
 
     private fun runIfCompleted(id: String, actionLabel: String): Boolean {
@@ -963,3 +963,4 @@ data class DownloadScreenUiState(
      */
     fun isSelected(downloadId: String): Boolean = selectedDownloadIds.contains(downloadId)
 }
+

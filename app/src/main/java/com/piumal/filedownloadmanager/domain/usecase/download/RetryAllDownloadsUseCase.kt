@@ -1,6 +1,6 @@
 package com.piumal.filedownloadmanager.domain.usecase.download
 
-import android.util.Log
+import com.piumal.filedownloadmanager.util.Logger
 import com.piumal.filedownloadmanager.domain.model.DownloadStatus
 import com.piumal.filedownloadmanager.domain.repository.DownloadRepository
 import kotlinx.coroutines.flow.first
@@ -35,7 +35,7 @@ class RetryAllDownloadsUseCase @Inject constructor(
      */
     suspend operator fun invoke(): Result<Int> {
         return try {
-            Log.d(TAG, "=== Starting Retry All Failed Downloads ===")
+            Logger.d(TAG, "=== Starting Retry All Failed Downloads ===")
 
             // Get all downloads
             val allDownloads = downloadRepository.getAllDownloads().first()
@@ -45,10 +45,10 @@ class RetryAllDownloadsUseCase @Inject constructor(
                 download.status == DownloadStatus.FAILED
             }
 
-            Log.d(TAG, "Found ${failedDownloads.size} failed downloads to retry")
+            Logger.d(TAG, "Found ${failedDownloads.size} failed downloads to retry")
 
             if (failedDownloads.isEmpty()) {
-                Log.d(TAG, "No failed downloads to retry")
+                Logger.d(TAG, "No failed downloads to retry")
                 return Result.success(0)
             }
 
@@ -56,20 +56,20 @@ class RetryAllDownloadsUseCase @Inject constructor(
             var retriedCount = 0
             failedDownloads.forEach { download ->
                 try {
-                    Log.d(TAG, "Retrying download: ${download.id} - ${download.fileName}")
+                    Logger.d(TAG, "Retrying download: ${download.id} - ${download.fileName}")
                     downloadRepository.retryDownload(download.id)
                     retriedCount++
                 } catch (e: Exception) {
-                    Log.e(TAG, "Failed to retry download ${download.id}: ${e.message}")
+                    Logger.e(TAG, "Failed to retry download ${download.id}: ${e.message}")
                     // Continue with other downloads even if one fails
                 }
             }
 
-            Log.d(TAG, "=== Retry All Downloads Complete: $retriedCount retried ===")
+            Logger.d(TAG, "=== Retry All Downloads Complete: $retriedCount retried ===")
             Result.success(retriedCount)
 
         } catch (e: Exception) {
-            Log.e(TAG, "Error retrying all downloads: ${e.message}", e)
+            Logger.e(TAG, "Error retrying all downloads: ${e.message}", e)
             Result.failure(e)
         }
     }

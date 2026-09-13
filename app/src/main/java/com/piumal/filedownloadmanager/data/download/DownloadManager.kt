@@ -51,17 +51,17 @@ class DownloadManager @Inject constructor(
         .writeTimeout(30, TimeUnit.SECONDS)
         .followRedirects(true)
         .addInterceptor { chain ->
-            val request = chain.request()
+            var request = chain.request()
             val response = chain.proceed(request)
             
-            // Check for redirect
+            // Check for redirect manually if OkHttp doesn't automatically handle it as expected 
+            // due to interceptor interference or to force manual checks.
             if (response.isRedirect) {
                 val location = response.header("Location")
                 if (location != null) {
                     val finalUrl = if (location.startsWith("http")) {
                         location
                     } else {
-                        // Relative URL
                         request.url.resolve(location)?.toString()
                     }
                     
@@ -105,14 +105,22 @@ class DownloadManager @Inject constructor(
                 return@flow
             }
 
-            val file = File(downloadItem.filePath.ifBlank { DownloadStoragePaths.getDownloadFilePath(safeFileName) })
-            val downloadDir = file.parentFile ?: DownloadStoragePaths.getDownloadDirectory()
-            if (!downloadDir.exists() && !downloadDir.mkdirs()) {
-                emit(DownloadProgress(0, 0, DownloadStatus.FAILED, "Failed to create download directory"))
-                return@flow
+            val uriString = downloadItem.uri ?: downloadItem.filePath
+            val isSaf = uriString.startsWith("content://")
+
+            val file = if (!isSaf) File(uriString.ifBlank { DownloadStoragePaths.getDownloadFilePath(safeFileName) }) else null
+            
+            // Only perform directory checks and storage space checks for local files for now
+            var downloadDir: File? = null
+            if (!isSaf && file != null) {
+                downloadDir = file.parentFile ?: DownloadStoragePaths.getDownloadDirectory()
+                if (!downloadDir.exists() && !downloadDir.mkdirs()) {
+                    emit(DownloadProgress(0, 0, DownloadStatus.FAILED, "Failed to create download directory"))
+                    return@flow
+                }
             }
 
-            var downloadedBytes = if (file.exists()) file.length() else 0L
+            var downloadedBytes = if (storageManager.exists(uriString)) storageManager.getLength(uriString) else 0L
 
             val requestBuilder = Request.Builder()
                 .url(downloadItem.url)
@@ -135,7 +143,7 @@ class DownloadManager @Inject constructor(
             // Handle HTTP 416 (Range Not Satisfiable)
             if (response.code == 416) {
                 response.close()
-                if (file.exists()) file.delete()
+                storageManager.delete(uriString)
                 downloadedBytes = 0L
 
                 val retryRequest = Request.Builder()
@@ -171,7 +179,7 @@ class DownloadManager @Inject constructor(
 
                 // Reset downloaded byte offset if server ignored Range header and returned HTTP 200
                 if (!isPartial) {
-                    if (file.exists()) file.delete()
+                    storageManager.delete(uriString)
                     downloadedBytes = 0L
                 }
 
@@ -189,7 +197,7 @@ class DownloadManager @Inject constructor(
                     else -> 0L
                 }
 
-                if (remainingBytes > 0 && !hasEnoughStorage(downloadDir, remainingBytes)) {
+                if (remainingBytes > 0 && downloadDir != null && !hasEnoughStorage(downloadDir, remainingBytes)) {
                     emit(DownloadProgress(downloadedBytes, totalBytes, DownloadStatus.FAILED, "Insufficient storage space"))
                     return@flow
                 }
@@ -248,8 +256,8 @@ class DownloadManager @Inject constructor(
         } catch (e: SecurityException) {
             emit(DownloadProgress(0, downloadItem.totalSize, DownloadStatus.FAILED, e.message ?: "Security violation"))
         } catch (e: IOException) {
-            val file = File(downloadItem.filePath.ifBlank { DownloadStoragePaths.getDownloadFilePath(safeFileName) })
-            val currentSize = if (file.exists()) file.length() else 0L
+            val uriString = downloadItem.uri ?: downloadItem.filePath
+            val currentSize = if (storageManager.exists(uriString)) storageManager.getLength(uriString) else 0L
             emit(DownloadProgress(currentSize, downloadItem.totalSize, DownloadStatus.FAILED, "Network error during download"))
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) {
@@ -258,8 +266,8 @@ class DownloadManager @Inject constructor(
                 storageManager.delete(uriString)
                 emit(DownloadProgress(0, downloadItem.totalSize, DownloadStatus.CANCELLED))
             } else {
-                val file = File(downloadItem.filePath.ifBlank { DownloadStoragePaths.getDownloadFilePath(safeFileName) })
-                val currentSize = if (file.exists()) file.length() else 0L
+                val uriString = downloadItem.uri ?: downloadItem.filePath
+                val currentSize = if (storageManager.exists(uriString)) storageManager.getLength(uriString) else 0L
                 emit(DownloadProgress(currentSize, downloadItem.totalSize, DownloadStatus.FAILED, "Unexpected error during download"))
             }
         }

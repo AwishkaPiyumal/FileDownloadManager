@@ -76,10 +76,10 @@ class DownloadRepositoryImpl @Inject constructor(
 
     override suspend fun copyDownload(item: DownloadItem, destinationFolderPath: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
-            val sourceFile = java.io.File(item.filePath)
-            // Validate source file containment
-            FileOperations.checkContainment(sourceFile, DownloadStoragePaths.getDownloadDirectory())
-            if (!sourceFile.exists()) throw Exception("Source file not found")
+            val sourceUriString = item.uri ?: item.filePath
+            
+            if (!storageManager.exists(sourceUriString)) throw Exception("Source file not found")
+            
             try {
                 if (destinationFolderPath.startsWith("content://")) {
                     // Handle Scoped Storage / SAF URI
@@ -87,11 +87,11 @@ class DownloadRepositoryImpl @Inject constructor(
                     val documentFile = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, uri)
                         ?: throw Exception("Invalid destination folder selected")
                     // Create the new file in the selected directory
-                    val newFile = documentFile.createFile("*/*", sourceFile.name)
+                    val newFile = documentFile.createFile("*/*", item.fileName)
                         ?: throw Exception("Failed to create file in destination")
                     // Copy streams using ContentResolver
                     context.contentResolver.openOutputStream(newFile.uri)?.use { output ->
-                        sourceFile.inputStream().use { input ->
+                        storageManager.getInputStream(sourceUriString)?.use { input ->
                             input.copyTo(output)
                         }
                     } ?: throw Exception("Failed to open output stream")
@@ -102,12 +102,12 @@ class DownloadRepositoryImpl @Inject constructor(
                     FileOperations.checkContainment(destDir, DownloadStoragePaths.getDownloadDirectory())
                     
                     if (!destDir.exists()) destDir.mkdirs()
-                    val destFile = java.io.File(destDir, sourceFile.name)
-                    sourceFile.inputStream().use { input ->
+                    val destFile = java.io.File(destDir, item.fileName)
+                    storageManager.getInputStream(sourceUriString)?.use { input ->
                         destFile.outputStream().use { output ->
                             input.copyTo(output)
                         }
-                    }
+                    } ?: throw Exception("Failed to open input stream")
                 }
             } catch (e: Exception) {
                 // Return the exact localized message so we know what went wrong if it fails again
