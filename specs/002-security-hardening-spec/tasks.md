@@ -132,7 +132,7 @@ This document outlines granular, independently testable tasks for the hardening 
   - Regression Tests: Test with known-bad hash.
 
 ## Domain 13: Security Testing
-- **T-014**: Comprehensive Regression Suite
+- [ ] T-014: Comprehensive Regression Suite
   - Phase: P0-P2
   - Affected Files: `app/src/test/java/com/piumal/security/...`
   - Dependencies: All
@@ -142,7 +142,7 @@ This document outlines granular, independently testable tasks for the hardening 
   - Regression Tests: Aggregate of all security test cases.
 
 ## Domain 14: Final Verification
-- **T-015**: Security Hardening Audit
+- [ ] T-015: Security Hardening Audit
   - Phase: P2
   - Affected Files: All
   - Dependencies: All
@@ -150,3 +150,17 @@ This document outlines granular, independently testable tasks for the hardening 
   - Acceptance Criteria: All security criteria satisfied; no regression.
   - Security Invariant: All specified invariants maintained.
   - Regression Tests: Final security sweep.
+
+## Domain 15: Magic Number Validation
+- [X] T-016: Magic Number Validation
+  - Phase: P2
+  - Affected Files: `DownloadManager.kt`, `ContentValidator.kt`
+  - Dependencies: T-005
+  - Objective: Detect and block malicious signatures upon first buffer read.
+  - Acceptance Criteria: Malicious signatures are blocked, temp files deleted.
+  - Security Invariant: Detect and block malicious file signatures early.
+  - Regression Tests: Added `MagicNumberValidationTest.kt`.
+
+## Phase 19: Convergence - Implementation Cleanup
+- [X] T-017: Already implemented / Obsolete: Cancellation logic is handled deterministically by DownloadService and DownloadManager. Current repository implementation update to FAILED is noted for final audit; no duplication of orchestration is performed.
+- [X] T-018: Out of Scope: Unrelated pre-existing UI TODO not required by Security & Reliability Hardening Specification.

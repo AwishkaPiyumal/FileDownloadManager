@@ -231,6 +231,9 @@ class DownloadManager @Inject constructor(
                             // Check for magic numbers in the very first chunk
                             if (isFirstBuffer) {
                                 isFirstBuffer = false
+                                if (ContentValidator.isMaliciousSignature(buffer)) {
+                                    throw SecurityException("Malicious file signature detected.")
+                                }
                             }
 
                             stream.write(buffer, 0, bytesRead)
@@ -254,8 +257,11 @@ class DownloadManager @Inject constructor(
                 emit(DownloadProgress(currentDownloadedBytes, totalBytes, DownloadStatus.COMPLETED))
             }
         } catch (e: SecurityException) {
+            val uriString = downloadItem.uri ?: downloadItem.filePath
+            storageManager.delete(uriString)
             emit(DownloadProgress(0, downloadItem.totalSize, DownloadStatus.FAILED, e.message ?: "Security violation"))
-        } catch (e: IOException) {
+        }
+ catch (e: IOException) {
             val uriString = downloadItem.uri ?: downloadItem.filePath
             val currentSize = if (storageManager.exists(uriString)) storageManager.getLength(uriString) else 0L
             emit(DownloadProgress(currentSize, downloadItem.totalSize, DownloadStatus.FAILED, "Network error during download"))

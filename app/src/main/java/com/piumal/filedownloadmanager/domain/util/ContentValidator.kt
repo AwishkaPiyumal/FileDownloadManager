@@ -17,6 +17,20 @@ import java.net.URL
 object ContentValidator {
 
     /**
+     * Checks if the first bytes of a file match a malicious signature.
+     */
+    fun isMaliciousSignature(buffer: ByteArray): Boolean {
+        // MZ (Windows Executable)
+        if (buffer.size >= 2 && buffer[0] == 0x4D.toByte() && buffer[1] == 0x5A.toByte()) return true
+        // ELF (Linux Executable)
+        if (buffer.size >= 4 && buffer[0] == 0x7F.toByte() && buffer[1] == 0x45.toByte() && buffer[2] == 0x4C.toByte() && buffer[3] == 0x46.toByte()) return true
+        // #! (Script)
+        if (buffer.size >= 2 && buffer[0] == 0x23.toByte() && buffer[1] == 0x21.toByte()) return true
+
+        return false
+    }
+
+    /**
      * Allowed MIME types for safer downloads.
      */
     private val ALLOWED_MIME_TYPES = setOf(
