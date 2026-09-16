@@ -73,8 +73,19 @@ object ContentValidator {
             )
         }
 
-        // Allow explicitly allowed types and types starting with allowed prefixes
-        if (ALLOWED_MIME_TYPES.contains(type) || type == "application/x-unknown-type" || ALLOWED_MIME_PREFIXES.any { type.startsWith(it) }) {
+        // Allow explicitly allowed types and types starting with allowed prefixes.
+        //
+        // NOTE: this used to also unconditionally allow the literal string
+        // "application/x-unknown-type", regardless of the file extension below. That string is
+        // never produced by this codebase (a genuinely missing/empty Content-Type header already
+        // becomes "" via the elvis operator above, which correctly falls through to the
+        // extension check), so the only way to trigger it was a remote server sending that exact
+        // non-standard header value on purpose - letting anyone who decompiles this app (trivial
+        // for an Android APK) bypass every content-type check, including the apk restriction
+        // above, with one response header. An unrecognized mime type now simply falls through to
+        // the same extension check as every other unrecognized type, same as this comment always
+        // claimed it did.
+        if (ALLOWED_MIME_TYPES.contains(type) || ALLOWED_MIME_PREFIXES.any { type.startsWith(it) }) {
             return ValidationResult(
                 isValid = true,
                 message = "MIME type is valid"
@@ -87,7 +98,15 @@ object ContentValidator {
         if (extension != null) {
             val safeExtensions = setOf(
                 "mp4", "mp3", "pdf", "zip", "rar", "7z", "jpg", "jpeg", "png",
-                "gif", "webp", "txt", "doc", "docx", "xls", "xlsx", "apk", "json", "iso", "tar", "gz"
+                "gif", "webp", "txt", "doc", "docx", "xls", "xlsx", "json", "iso", "tar", "gz"
+                // Deliberately NOT including "apk" (or other installer/executable-package
+                // formats for any platform - .ipa, .xapk, .aab, .msi, .dmg, .appimage, etc).
+                // Google Play's Device and Network Abuse policy prohibits apps from downloading
+                // executable code from a source other than Google Play / facilitating install of
+                // other apps; general-purpose downloaders that hand users installable APKs are a
+                // well-documented rejection/removal reason. BLOCKED_MIME_TYPES below already
+                // blocks the Windows/Linux equivalents (.exe, .sh) - apk is excluded here for the
+                // same reason, not because it's technically more dangerous than those.
             )
 
             if (safeExtensions.contains(extension)) {

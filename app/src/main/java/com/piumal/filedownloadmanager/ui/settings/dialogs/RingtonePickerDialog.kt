@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.piumal.filedownloadmanager.util.Logger
 
 /**
  * RingtonePickerDialog
@@ -174,7 +175,7 @@ fun RingtonePickerDialog(
                     // Find the display name for the selected ringtone
                     val selectedRingtoneInfo = ringtones.value.find { it.uri == selectedRingtone.value }
                     val displayName = selectedRingtoneInfo?.displayName ?: "Unknown Ringtone"
-                    android.util.Logger.d("RingtonePickerDialog", "Selected ringtone: uri=${selectedRingtone.value}, name=$displayName")
+                    Logger.d("RingtonePickerDialog", "Selected ringtone: uri=${selectedRingtone.value}, name=$displayName")
                     // Pass both URI and display name
                     onRingtoneSelected(selectedRingtone.value to displayName)
                     onDismiss()
@@ -272,12 +273,12 @@ private fun loadSystemNotificationRingtones(context: Context): List<RingtoneInfo
                         )
                     )
                 } catch (e: Exception) {
-                    android.util.Logger.e("RingtonePickerDialog", "Error loading ringtone", e)
+                    Logger.e("RingtonePickerDialog", "Error loading ringtone", e)
                 }
             }
         }
     } catch (e: Exception) {
-        android.util.Logger.e("RingtonePickerDialog", "Error loading system ringtones", e)
+        Logger.e("RingtonePickerDialog", "Error loading system ringtones", e)
     }
 
     return ringtones
@@ -309,7 +310,7 @@ private fun playRingtone(context: Context, mediaPlayer: MediaPlayer, ringtoneUri
         mediaPlayer.prepare()
         mediaPlayer.start()
     } catch (e: Exception) {
-        android.util.Logger.e("RingtonePickerDialog", "Error playing ringtone: ${e.message}", e)
+        Logger.e("RingtonePickerDialog", "Error playing ringtone: ${e.message}", e)
     }
 }
 

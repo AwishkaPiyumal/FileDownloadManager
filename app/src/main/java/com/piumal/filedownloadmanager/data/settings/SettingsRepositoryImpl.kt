@@ -3,6 +3,7 @@ package com.piumal.filedownloadmanager.data.settings
 import android.content.Context
 import android.content.SharedPreferences
 import com.piumal.filedownloadmanager.domain.repository.SettingsRepository
+import com.piumal.filedownloadmanager.util.Logger
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -67,12 +68,12 @@ class SettingsRepositoryImpl @Inject constructor(
     private val light = _light.asStateFlow()
 
     private val _completionRingtone = MutableStateFlow(prefs.getString(KEY_COMPLETION_RINGTONE, DEFAULT_RINGTONE) ?: DEFAULT_RINGTONE).also {
-        android.util.Logger.d("SettingsRepository", "Init: _completionRingtone = ${it.value}")
+        Logger.d("SettingsRepository", "Init: _completionRingtone = ${it.value}")
     }
     private val completionRingtone = _completionRingtone.asStateFlow()
 
     private val _failureRingtone = MutableStateFlow(prefs.getString(KEY_FAILURE_RINGTONE, DEFAULT_RINGTONE) ?: DEFAULT_RINGTONE).also {
-        android.util.Logger.d("SettingsRepository", "Init: _failureRingtone = ${it.value}")
+        Logger.d("SettingsRepository", "Init: _failureRingtone = ${it.value}")
     }
     private val failureRingtone = _failureRingtone.asStateFlow()
 
@@ -90,12 +91,12 @@ class SettingsRepositoryImpl @Inject constructor(
             KEY_LIGHT -> _light.value = sp.getBoolean(KEY_LIGHT, true)
             KEY_COMPLETION_RINGTONE -> {
                 val newValue = sp.getString(KEY_COMPLETION_RINGTONE, DEFAULT_RINGTONE) ?: DEFAULT_RINGTONE
-                android.util.Logger.d("SettingsRepository", "Listener triggered: KEY_COMPLETION_RINGTONE = $newValue")
+                Logger.d("SettingsRepository", "Listener triggered: KEY_COMPLETION_RINGTONE = $newValue")
                 _completionRingtone.value = newValue
             }
             KEY_FAILURE_RINGTONE -> {
                 val newValue = sp.getString(KEY_FAILURE_RINGTONE, DEFAULT_RINGTONE) ?: DEFAULT_RINGTONE
-                android.util.Logger.d("SettingsRepository", "Listener triggered: KEY_FAILURE_RINGTONE = $newValue")
+                Logger.d("SettingsRepository", "Listener triggered: KEY_FAILURE_RINGTONE = $newValue")
                 _failureRingtone.value = newValue
             }
             KEY_PARALLEL_DOWNLOAD -> _parallelDownloadLimit.value = sp.getInt(KEY_PARALLEL_DOWNLOAD, DEFAULT_PARALLEL_LIMIT)
@@ -104,7 +105,7 @@ class SettingsRepositoryImpl @Inject constructor(
 
     init {
         prefs.registerOnSharedPreferenceChangeListener(listener)
-        android.util.Logger.d("SettingsRepository", "Init: SharedPreference listener registered")
+        Logger.d("SettingsRepository", "Init: SharedPreference listener registered")
     }
 
     override fun observeAutoRemoveCompleted(): Flow<Boolean> = autoRemoveCompleted

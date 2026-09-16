@@ -18,8 +18,14 @@ object FileOperations {
     fun checkContainment(file: File, approvedDirectory: File) {
         val canonicalFile = file.canonicalFile
         val canonicalDir = approvedDirectory.canonicalFile
-        
-        if (!canonicalFile.path.startsWith(canonicalDir.path)) {
+
+        // Compare with a trailing separator so a sibling directory whose name merely starts
+        // with the same characters (e.g. ".../Downloads-evil" vs ".../Downloads") isn't
+        // mistaken for a subdirectory by a plain string prefix check.
+        val isExactMatch = canonicalFile.path == canonicalDir.path
+        val isContained = canonicalFile.path.startsWith(canonicalDir.path + File.separator)
+
+        if (!isExactMatch && !isContained) {
             throw SecurityException("Filesystem access violation: Attempted access outside approved directory.")
         }
     }

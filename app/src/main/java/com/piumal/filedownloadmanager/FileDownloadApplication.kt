@@ -28,7 +28,15 @@ class FileDownloadApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        System.loadLibrary("sqlcipher")
+        try {
+            System.loadLibrary("sqlcipher")
+        } catch (e: UnsatisfiedLinkError) {
+            // Don't let a missing/incompatible native lib for this device's ABI take down the
+            // whole app before anything else has a chance to run. The Room/SQLCipher database
+            // will fail when it's actually opened (see AppModule.provideDownloadDatabase), which
+            // surfaces as a narrower, more diagnosable failure than a startup crash here.
+            Logger.e(TAG, "Failed to load sqlcipher native library", e)
+        }
         Logger.d(TAG, "Application onCreate() - Hilt initialized")
 
         connectivityManager = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager

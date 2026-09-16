@@ -175,6 +175,19 @@ class DownloadService : Service() {
                     Logger.d(TAG, "light observer cancelled (expected on service shutdown)")
                 }
             }
+
+            // Reconcile any downloads left stuck in DOWNLOADING status from a previous
+            // process/service death (OOM kill, force-stop, dataSync foreground timeout, etc).
+            // Without this, resumeAllPendingDownloads() never picks them up again because it
+            // only queries PAUSED/QUEUED/FAILED, so they'd show a frozen progress bar forever.
+            serviceScope.launch {
+                try {
+                    downloadQueueManager.syncWithDatabase()
+                    Logger.d(TAG, "Synced queue state with database on service start")
+                } catch (e: Exception) {
+                    Logger.e(TAG, "Error syncing queue with database on start", e)
+                }
+            }
         } catch (e: Exception) {
             Logger.e(TAG, "Error initializing service components", e)
         }
@@ -208,6 +221,23 @@ class DownloadService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    // Android 15+ (API 35+): dataSync foreground services get a 6-hour budget per rolling
+    // 24-hour window while the app is backgrounded. When it's exhausted, the system calls this
+    // and expects stopSelf() within a few seconds - if we don't call it, the OS throws an
+    // uncatchable ForegroundServiceDidNotStopInTimeException that kills the whole app process,
+    // and any later attempt to re-enter foreground that day throws
+    // ForegroundServiceStartNotAllowedException instead of starting. This override is additive:
+    // on API < 35 the platform never calls it, so behavior there is unchanged. Reopening the app
+    // (bringing it to the foreground) resets the 6-hour budget, so downloads can resume normally
+    // afterwards; see onDestroy()/syncWithDatabase() for how in-flight state is reconciled.
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        super.onTimeout(startId, fgsType)
+        Logger.w(TAG, "onTimeout(): dataSync 6h/24h background budget exhausted (fgsType=$fgsType) - stopping service")
+        isForegroundStarted = false
+        foregroundDownloadId = null
+        stopSelf()
+    }
 
     override fun onDestroy() {
         Logger.d(TAG, "Service destroyed")
@@ -283,16 +313,16 @@ class DownloadService : Service() {
                 if (!isForegroundStarted) {
                     try {
                         createNotificationChannel()
-                        val notificationId = notificationHelper.getNotificationIdForDownload(downloadId)
-                        val notification = notificationHelper.createProgressNotificationForForeground(
-                            downloadId,
-                            downloadItem.fileName,
-                            0,
-                            downloadItem.totalSize,
-                            0,
-                            DownloadStatus.DOWNLOADING
-                        )
-                        startForeground(notificationId, notification)
+                        // IMPORTANT: the foreground-service anchor notification must use its own
+                        // fixed, dedicated ID (FOREGROUND_NOTIFICATION_ID) - never a per-download
+                        // notification ID. Per-download progress/completed/failed notifications are
+                        // posted separately (see DownloadNotificationHelper, keyed by
+                        // getNotificationIdForDownload) via plain notify() as progress flows in below.
+                        // Reusing the same ID for both used to mean stopForeground(REMOVE) in
+                        // checkAndStopService() would delete the just-shown "Download Complete"
+                        // notification the instant the last active download finished.
+                        val notification = createForegroundNotification()
+                        startForeground(FOREGROUND_NOTIFICATION_ID, notification)
                         foregroundDownloadId = downloadId
                         isForegroundStarted = true
                         Logger.d(TAG, "Service started in foreground")
@@ -374,7 +404,10 @@ class DownloadService : Service() {
                                     try {
                                         val notificationId = notificationHelper.getNotificationIdForDownload(downloadId)
                                         Logger.d(TAG, "Cancelling notification ID: $notificationId")
-                                        stopForeground(STOP_FOREGROUND_REMOVE)
+                                        // NOTE: do not call stopForeground() here - other downloads may
+                                        // still be active. checkAndStopService() in the finally block
+                                        // below is the single source of truth for whether the service
+                                        // should leave the foreground state.
                                         notificationManager.cancel(notificationId)
                                         Logger.d(TAG, "Notification removed from panel successfully")
                                     } catch (e: Exception) {

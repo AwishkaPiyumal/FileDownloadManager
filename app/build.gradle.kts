@@ -22,14 +22,14 @@ fun localProperty(name: String): String = localProperties.getProperty(name, "")
 
 android {
     namespace = "com.piumal.filedownloadmanager"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.piumal.filedownloadmanager"
         minSdk = 24
-        targetSdk = 35
+        targetSdk = 36
         versionCode =5
-        versionName = "1.1.0"
+        versionName = "1.2.0"
 
         buildConfigField("String", "API_BASE_URL", "\"${localProperty("API_BASE_URL").asBuildConfigLiteral()}\"")
         buildConfigField("String", "API_KEY", "\"${localProperty("API_KEY").asBuildConfigLiteral()}\"")

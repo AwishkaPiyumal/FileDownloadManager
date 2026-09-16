@@ -31,21 +31,26 @@ object Logger {
         }
     }
 
-    private fun redact(message: String): String {
-        // Redact potential sensitive info
+    // internal (not private) so tests can call the real implementation directly instead of
+    // keeping a hand-copied duplicate in sync (see LoggerRedactionTest).
+    internal fun redact(message: String): String {
         var redacted = message
-        
-        // Patterns to redact
-        val patterns = listOf(
-            Regex("(?i)(token|auth|password|api_key|secret|cookie|session_id)=[^&\\s]+"),
-            Regex("(?i)Authorization: [^\\s]+"),
-            Regex("(?i)https?://[^\\s?]+\\?.*(token|auth|password|api_key|secret|session_id)=[^&\\s]+")
-        )
-        
-        for (pattern in patterns) {
-            redacted = redacted.replace(pattern, "$1=REDACTED")
-        }
-        
+
+        // key=value pairs for sensitive keys, wherever they appear (including inside URLs, so
+        // this alone also covers query-string secrets - no separate URL-shaped pattern needed).
+        redacted = redacted.replace(
+            Regex("(?i)(token|auth|password|api_key|secret|cookie|session_id)=[^&\\s]+")
+        ) { match -> "${match.groupValues[1]}=REDACTED" }
+
+        // "Authorization: <value>" headers. This pattern has no capture group, so the
+        // replacement must not reference one - it previously reused the same "$1=REDACTED"
+        // replacement as the pattern above, which threw IndexOutOfBoundsException: No group 1
+        // (confirmed on the JVM) for every message that actually contained an Authorization
+        // header, i.e. exactly the sensitive case this function exists to redact.
+        redacted = redacted.replace(
+            Regex("(?i)Authorization:\\s*[^\\r\\n]+")
+        ) { "Authorization: REDACTED" }
+
         return redacted
     }
 }
