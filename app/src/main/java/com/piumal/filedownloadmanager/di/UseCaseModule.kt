@@ -59,4 +59,10 @@ object UseCaseModule {
     fun provideRemoveFromListUseCase(
         repository: DownloadRepository
     ): RemoveFromListUseCase = RemoveFromListUseCaseImpl(repository)
+
+    @Provides
+    @Singleton
+    fun provideExtractAudioUseCase(
+        repository: DownloadRepository
+    ): ExtractAudioUseCase = ExtractAudioUseCaseImpl(repository)
 }

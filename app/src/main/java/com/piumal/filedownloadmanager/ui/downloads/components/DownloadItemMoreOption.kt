@@ -19,6 +19,7 @@ fun DownloadItemMoreOption(
     onMenuItemClick: (DownloadItemMoreMenuAction) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    isVideoFile: Boolean = false,
 ) {
 
     DropdownMenu(
@@ -74,6 +75,24 @@ fun DownloadItemMoreOption(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
             modifier = Modifier.height(32.dp)
         )
+        if (isVideoFile) {
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        text = "Extract audio only",
+                        color = if(enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                },
+                onClick = {
+                    onMenuItemClick(DownloadItemMoreMenuAction.ExtractAudio)
+                    onDismiss()
+                },
+                enabled = enabled,
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                modifier = Modifier.height(32.dp)
+            )
+        }
         HorizontalDivider(
             modifier = Modifier.padding(vertical = 8.dp),
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
@@ -171,6 +190,7 @@ sealed class DownloadItemMoreMenuAction {
     data object Open : DownloadItemMoreMenuAction()
     data object ShowInFolder : DownloadItemMoreMenuAction()
     data object ShareFile : DownloadItemMoreMenuAction()
+    data object ExtractAudio : DownloadItemMoreMenuAction()
     data object ShowInfo : DownloadItemMoreMenuAction()
     data object RenameFile : DownloadItemMoreMenuAction()
     data object Copyto : DownloadItemMoreMenuAction()

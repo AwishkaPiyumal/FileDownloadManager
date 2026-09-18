@@ -58,6 +58,19 @@ object ContentValidator {
     )
 
     /**
+     * Executable/installer-package extensions that must be blocked regardless of what
+     * Content-Type header the server sends. This check must run BEFORE the MIME-type allow-list
+     * below: an .apk file is technically a zip archive and can be served with
+     * "application/zip" or "application/x-zip-compressed" - both of which are in
+     * ALLOWED_MIME_TYPES - so checking MIME type first would let a relabeled (accidentally or
+     * deliberately) installer file sail straight through. Verified: with the old ordering,
+     * validateMimeType("application/zip", ".../app.apk") returned isValid=true.
+     */
+    private val BLOCKED_EXTENSIONS = setOf(
+        "apk", "exe", "msi", "bat", "cmd", "sh", "dmg", "deb", "rpm"
+    )
+
+    /**
      * Validates the MIME type of a download.
      * 
      * @param mimeType The MIME type to validate (e.g., "video/mp4")
@@ -65,6 +78,16 @@ object ContentValidator {
      */
     fun validateMimeType(mimeType: String?, url: String): ValidationResult {
         val type = mimeType?.lowercase()?.trim() ?: ""
+        val extension = getFileExtension(url)
+
+        // Extension-based block runs first and cannot be bypassed by the MIME type below -
+        // see the BLOCKED_EXTENSIONS doc comment for why the ordering matters here.
+        if (extension != null && BLOCKED_EXTENSIONS.contains(extension)) {
+            return ValidationResult(
+                isValid = false,
+                message = "This file type is blocked for security reasons."
+            )
+        }
 
         if (BLOCKED_MIME_TYPES.contains(type)) {
             return ValidationResult(
@@ -93,20 +116,12 @@ object ContentValidator {
         }
 
         // Relaxed fallback: if the content type is unknown/generic, check the extension.
-        // If extension is safe, allow it.
-        val extension = getFileExtension(url)
+        // If extension is safe, allow it. (BLOCKED_EXTENSIONS above already ruled out apk/exe/
+        // etc. regardless of MIME type, so this list doesn't need to defend against those too.)
         if (extension != null) {
             val safeExtensions = setOf(
                 "mp4", "mp3", "pdf", "zip", "rar", "7z", "jpg", "jpeg", "png",
                 "gif", "webp", "txt", "doc", "docx", "xls", "xlsx", "json", "iso", "tar", "gz"
-                // Deliberately NOT including "apk" (or other installer/executable-package
-                // formats for any platform - .ipa, .xapk, .aab, .msi, .dmg, .appimage, etc).
-                // Google Play's Device and Network Abuse policy prohibits apps from downloading
-                // executable code from a source other than Google Play / facilitating install of
-                // other apps; general-purpose downloaders that hand users installable APKs are a
-                // well-documented rejection/removal reason. BLOCKED_MIME_TYPES below already
-                // blocks the Windows/Linux equivalents (.exe, .sh) - apk is excluded here for the
-                // same reason, not because it's technically more dangerous than those.
             )
 
             if (safeExtensions.contains(extension)) {
@@ -129,32 +144,80 @@ object ContentValidator {
      *
      * MUST BLOCK: Streaming platforms with DRM and Terms of Service restrictions
      * Reason: Copyright infringement + violates platform ToS = App Store removal
+     *
+     * Matched as an exact host or a proper subdomain (see isBlockedDomain below) - NOT as a
+     * bare substring. A substring check here would false-positive on any unrelated domain that
+     * merely contains one of these as text, e.g. "myyoutube.com" or
+     * "youtube.com.some-other-site.net" (the latter isn't even a youtube.com subdomain - it's a
+     * completely different domain, "some-other-site.net", that just happens to have "youtube.com"
+     * as an earlier path-like label, which a plain .contains() would incorrectly treat as blocked).
      */
     private val BLOCKED_DOMAINS = setOf(
         // ==================== VIDEO STREAMING PLATFORMS ====================
-        // YouTube (ALL variations - violates YouTube ToS + copyright)
         "youtube.com", "youtu.be", "youtube-nocookie.com",
-        "youtube-dl", "ytmp3", "y2mate", "savefrom", "keepvid", "yt1s", "ytmp4",
 
         // Strict DRM-protected streaming services
         "netflix.com", "nflxvideo.net", "nflxext.com", "nflximg.net",
         "disneyplus.com", "hbomax.com", "primevideo.com", "hulu.com",
         "tv.apple.com", "peacocktv.com", "paramountplus.com", "showtime.com",
-        "spotify.com", "music.apple.com", "deezer.com", "tidal.com", "soundcloud.com",
-
-        // ==================== PIRACY/TORRENT SITES ====================
-        "piratebay", "thepiratebay", "kickass", "rarbg", "yts", "1337x",
-        "eztv", "limetorrent", "torrentz", "extratorrent", "torrent", "magnet:"
+        "spotify.com", "music.apple.com", "deezer.com", "tidal.com", "soundcloud.com"
     )
 
     /**
-     * Suspicious URL patterns that may indicate illegal activity
+     * Downloader-tool and mirror-site *name fragments* - deliberately matched as a substring
+     * anywhere in the host (see isBlockedDomain below), because these aren't registrable domains
+     * on their own; they're tool/brand names that show up as part of many different mirror
+     * domains (e.g. "y2mate" catches y2mate.com, y2mate.nu, y2mate-proxy7.io alike). Exact/
+     * subdomain matching, as used for BLOCKED_DOMAINS above, wouldn't make sense for these.
+     * Kept short and reasonably distinctive on purpose to limit false positives - see
+     * SUSPICIOUS_WORD_PATTERNS below for generic English words, which use word-boundary matching
+     * instead since substring matching on a common word is much more false-positive-prone.
      */
-    private val SUSPICIOUS_PATTERNS = listOf(
+    private val BLOCKED_DOMAIN_KEYWORDS = setOf(
+        "youtube-dl", "ytmp3", "y2mate", "savefrom", "keepvid", "yt1s", "ytmp4",
+        "piratebay", "thepiratebay", "kickass", "rarbg", "yts", "1337x",
+        "eztv", "limetorrent", "torrentz", "extratorrent"
+    )
+
+    /**
+     * True if [host] is (or is a subdomain of) a BLOCKED_DOMAINS entry, or contains one of the
+     * BLOCKED_DOMAIN_KEYWORDS fragments.
+     */
+    private fun isBlockedDomain(host: String): Boolean {
+        val domain = host.lowercase()
+        val isBlockedExactOrSubdomain = BLOCKED_DOMAINS.any { blocked ->
+            domain == blocked || domain.endsWith(".$blocked")
+        }
+        val containsBlockedKeyword = BLOCKED_DOMAIN_KEYWORDS.any { domain.contains(it) }
+        return isBlockedExactOrSubdomain || containsBlockedKeyword
+    }
+
+    /**
+     * Suspicious URL/filename patterns that may indicate illegal activity.
+     *
+     * Matched with word boundaries (see containsSuspiciousPattern below), not a bare substring -
+     * a plain .contains("hack") would block a perfectly legitimate file named
+     * "life-hacks-guide.pdf" or "growth-hacking-101.pdf". Word-boundary matching still catches
+     * "software-hack-tool.zip" or "game-cheat-download.exe" (hyphens/punctuation count as
+     * boundaries), it just requires the exact word rather than any substring.
+     */
+    private val SUSPICIOUS_WORD_PATTERNS = listOf(
         "crack", "keygen", "pirate", "warez",
-        "nulled", "leaked", "ripped", "torrent", "magnet:",
+        "nulled", "leaked", "ripped", "torrent",
         "hack", "cheat", "mod-apk"
     )
+
+    /** Literal (non-word) patterns not suited to \b word-boundary matching. */
+    private val SUSPICIOUS_LITERAL_PATTERNS = listOf("magnet:")
+
+    private fun containsSuspiciousPattern(text: String): Boolean {
+        val lower = text.lowercase()
+        val wordHit = SUSPICIOUS_WORD_PATTERNS.any { word ->
+            Regex("\\b${Regex.escape(word)}\\b").containsMatchIn(lower)
+        }
+        val literalHit = SUSPICIOUS_LITERAL_PATTERNS.any { lower.contains(it) }
+        return wordHit || literalHit
+    }
 
     /**
      * Maximum file size (5 GB) to support enterprise-grade downloads while preserving abuse controls.
@@ -208,7 +271,7 @@ object ContentValidator {
 
         // Check for blocked domains
         val domain = parsedUrl.host.lowercase()
-        if (BLOCKED_DOMAINS.any { domain.contains(it) }) {
+        if (isBlockedDomain(domain)) {
             return ValidationResult(
                 isValid = false,
                 message = "You cannot download from this platform."
@@ -216,14 +279,11 @@ object ContentValidator {
         }
 
         // Check for suspicious patterns in URL
-        val lowerUrl = url.lowercase()
-        SUSPICIOUS_PATTERNS.forEach { pattern ->
-            if (lowerUrl.contains(pattern)) {
-                return ValidationResult(
-                    isValid = false,
-                    message = "You cannot download this content."
-                )
-            }
+        if (containsSuspiciousPattern(url)) {
+            return ValidationResult(
+                isValid = false,
+                message = "You cannot download this content."
+            )
         }
 
         // All checks passed
@@ -256,14 +316,11 @@ object ContentValidator {
         }
 
         // Check for suspicious patterns in file name
-        val lowerFileName = fileName.lowercase()
-        SUSPICIOUS_PATTERNS.forEach { pattern ->
-            if (lowerFileName.contains(pattern)) {
-                return ValidationResult(
-                    isValid = false,
-                    message = "You cannot download this content."
-                )
-            }
+        if (containsSuspiciousPattern(fileName)) {
+            return ValidationResult(
+                isValid = false,
+                message = "You cannot download this content."
+            )
         }
 
         // Check file name length
@@ -316,7 +373,15 @@ object ContentValidator {
     }
 
     /**
-     * Get file extension from URL
+     * Get file extension from URL.
+     *
+     * LIMITATION: this only looks at the URL path, so it returns null for dynamic download
+     * endpoints with no file-like path segment (e.g. "https://example.com/download?id=123",
+     * a very common pattern for cloud storage and file-hosting links). The authoritative source
+     * for a download's real filename is the HTTP response's Content-Disposition header, when
+     * present - see [extractFileNameFromContentDisposition]. This function (and
+     * [extractFileName] below) should be treated as a best-effort fallback for when that header
+     * is absent, not the primary source of truth.
      */
     fun getFileExtension(url: String): String? {
         return try {
@@ -330,7 +395,11 @@ object ContentValidator {
     }
 
     /**
-     * Extract file name from URL
+     * Extract file name from URL.
+     *
+     * LIMITATION: same as [getFileExtension] above - URL-path-only, so it fails for dynamic
+     * download endpoints. Prefer [extractFileNameFromContentDisposition] when a Content-Disposition
+     * header is available; use this only as the fallback when it isn't.
      */
     fun extractFileName(url: String): String? {
         return try {
@@ -340,6 +409,41 @@ object ContentValidator {
         } catch (e: Exception) {
             null
         }
+    }
+
+    /**
+     * Extracts a filename from a Content-Disposition header value per RFC 6266, e.g.
+     * `attachment; filename="report.pdf"` or the UTF-8 extended form
+     * `attachment; filename*=UTF-8''report%20final.pdf`. Prefers the extended form when both are
+     * present, since it's the one that correctly represents non-ASCII names.
+     *
+     * Not currently called anywhere in the download pipeline - this is a ready-to-use utility,
+     * not yet wired in. To use it: read `response.header("Content-Disposition")` where the HTTP
+     * response is available (DownloadManager.downloadFile), and prefer its result over
+     * [extractFileName] when non-null. Still run the result through [FileNameSanitizer] exactly
+     * as today, since this parses a value that ultimately comes from a remote server.
+     */
+    fun extractFileNameFromContentDisposition(headerValue: String?): String? {
+        if (headerValue.isNullOrBlank()) return null
+
+        Regex("filename\\*=UTF-8''([^;]+)", RegexOption.IGNORE_CASE)
+            .find(headerValue)
+            ?.groupValues?.get(1)
+            ?.let { encoded ->
+                return try {
+                    java.net.URLDecoder.decode(encoded.trim(), "UTF-8")
+                } catch (e: Exception) {
+                    null
+                }
+            }
+
+        Regex("filename=\"?([^\";]+)\"?", RegexOption.IGNORE_CASE)
+            .find(headerValue)
+            ?.groupValues?.get(1)
+            ?.trim()
+            ?.let { if (it.isNotEmpty()) return it }
+
+        return null
     }
 
     /**

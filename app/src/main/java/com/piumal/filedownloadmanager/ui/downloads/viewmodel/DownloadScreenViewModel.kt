@@ -27,6 +27,7 @@ import com.piumal.filedownloadmanager.domain.usecase.download.CopyToUseCase
 import com.piumal.filedownloadmanager.domain.usecase.download.RemoveFromListUseCase
 import com.piumal.filedownloadmanager.domain.usecase.download.ShowInFolderUseCase
 import com.piumal.filedownloadmanager.domain.usecase.download.ShowInfoUseCase
+import com.piumal.filedownloadmanager.domain.usecase.download.ExtractAudioUseCase
 import com.piumal.filedownloadmanager.domain.usecase.download.SortOption as DomainSortOption
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,6 +60,7 @@ class DownloadScreenViewModel @Inject constructor(
     private val deleteDownloadUseCase: DeleteDownloadUseCase,
     private val showInFolderUseCase: ShowInFolderUseCase,
     private val showInfoUseCase: ShowInfoUseCase,
+    private val extractAudioUseCase: ExtractAudioUseCase,
     private val copyToUseCase: CopyToUseCase,
     private val removeFromListUseCase: RemoveFromListUseCase,
     private val downloadRepository: DownloadRepository,
@@ -573,6 +575,51 @@ class DownloadScreenViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Extract the audio track from a completed video download into its own new download entry.
+     * Purely local processing - see ExtractAudioUseCase/AudioExtractor for details.
+     */
+    /**
+     * Called when the user taps "Extract audio only" on a video - records which download is
+     * awaiting a bitrate choice; the actual extraction (extractAudio below) runs once they
+     * confirm a bitrate in Mp3BitratePickerDialog.
+     */
+    fun requestExtractAudio(id: String) {
+        _uiState.update { it.copy(pendingAudioExtractionId = id) }
+    }
+
+    /** Dismiss the bitrate picker without extracting anything. */
+    fun cancelAudioExtraction() {
+        _uiState.update { it.copy(pendingAudioExtractionId = null) }
+    }
+
+    fun extractAudio(id: String, bitrate: com.piumal.filedownloadmanager.util.Mp3Bitrate) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(pendingAudioExtractionId = null, isExtractingAudio = true) }
+            extractAudioUseCase(id, bitrate)
+                .onSuccess { audioItem ->
+                    _uiState.update {
+                        it.copy(
+                            isExtractingAudio = false,
+                            downloadSuccess = true,
+                            successMessage = "Extracted audio: ${audioItem.fileName}"
+                        )
+                    }
+                    kotlinx.coroutines.delay(2500.milliseconds)
+                    _uiState.update { it.copy(downloadSuccess = false, successMessage = null) }
+                }
+                .onFailure { error ->
+                    Logger.e("DownloadScreenVM", "Failed to extract audio", error)
+                    _uiState.update {
+                        it.copy(
+                            isExtractingAudio = false,
+                            downloadError = error.message ?: "Failed to extract audio"
+                        )
+                    }
+                }
+        }
+    }
+
     fun copyTo(id: String) {
         viewModelScope.launch {
             // Need to retrieve the item to pass it to the copyToUseCase as required by the new interface
@@ -949,6 +996,8 @@ data class DownloadScreenUiState(
     val downloadSuccess: Boolean = false,
     val successMessage: String? = null,
     val downloadError: String? = null,
+    val isExtractingAudio: Boolean = false,
+    val pendingAudioExtractionId: String? = null,
     // Selection mode states
     val isSelectionMode: Boolean = false,
     val selectedDownloadIds: Set<String> = emptySet()

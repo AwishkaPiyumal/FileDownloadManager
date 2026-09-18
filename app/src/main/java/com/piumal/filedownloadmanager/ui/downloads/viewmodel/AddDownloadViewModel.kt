@@ -85,7 +85,7 @@ class AddDownloadViewModel @Inject constructor(
     }
 
     /**
-     * Update file path
+     * File path
      */
     fun onFilePathChanged(filePath: String) {
         _uiState.update { it.copy(filePath = filePath) }

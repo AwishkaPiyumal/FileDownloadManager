@@ -48,6 +48,7 @@ fun DownloadItemCard(
     onRetryClick: (String) -> Unit = {},
     onOpen: (String) -> Unit = {},
     onShare: (String) -> Unit = {},
+    onExtractAudio: (String) -> Unit = {},
     onRename: (String, String) -> Unit = { id, name -> },
     onDelete: (String) -> Unit = {},
     onShowInFolder: (String) -> Unit = {},
@@ -136,6 +137,7 @@ fun DownloadItemCard(
                             is DownloadItemMoreMenuAction.Open -> onOpen(downloadItem.id)
                             is DownloadItemMoreMenuAction.ShowInFolder -> onShowInFolder(downloadItem.id)
                             is DownloadItemMoreMenuAction.ShareFile -> onShare(downloadItem.id)
+                            is DownloadItemMoreMenuAction.ExtractAudio -> onExtractAudio(downloadItem.id)
                             is DownloadItemMoreMenuAction.ShowInfo -> onShowInfo(downloadItem.id)
                             is DownloadItemMoreMenuAction.RenameFile -> onRename(downloadItem.id, downloadItem.fileName)
                             is DownloadItemMoreMenuAction.Copyto -> onCopyTo(downloadItem.id)
@@ -143,7 +145,8 @@ fun DownloadItemCard(
                             is DownloadItemMoreMenuAction.Removefromlist -> onRemoveFromList(downloadItem.id)
                         }
                     },
-                    enabled = actionsEnabled
+                    enabled = actionsEnabled,
+                    isVideoFile = com.piumal.filedownloadmanager.util.MediaFileTypes.isVideoFile(downloadItem.fileName)
                 )
             }
         }

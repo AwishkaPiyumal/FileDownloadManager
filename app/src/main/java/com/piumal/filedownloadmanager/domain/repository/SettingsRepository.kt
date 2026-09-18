@@ -31,12 +31,6 @@ interface SettingsRepository {
     /** Observe whether light (flash) is enabled for notifications */
     fun observeLight(): Flow<Boolean>
 
-    /** Observe the completion notification ringtone URI */
-    fun observeCompletionRingtone(): Flow<String>
-
-    /** Observe the failure notification ringtone URI */
-    fun observeFailureRingtone(): Flow<String>
-
     /** Get current parallel download limit */
     fun getParallelDownloadLimit(): Int
 

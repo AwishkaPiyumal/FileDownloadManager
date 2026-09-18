@@ -20,6 +20,7 @@ import com.piumal.filedownloadmanager.domain.usecase.download.DownloadFilterType
 import com.piumal.filedownloadmanager.ui.downloads.components.AddDownloadDialog
 import com.piumal.filedownloadmanager.ui.downloads.components.DeleteSelectedConfirmDialog
 import com.piumal.filedownloadmanager.ui.downloads.components.DownloadInfoDialog
+import com.piumal.filedownloadmanager.ui.downloads.components.Mp3BitratePickerDialog
 import com.piumal.filedownloadmanager.ui.downloads.components.DownloadFAB
 import com.piumal.filedownloadmanager.ui.downloads.components.DownloadList
 import com.piumal.filedownloadmanager.ui.downloads.components.FileExistsDialog
@@ -171,6 +172,13 @@ fun DownloadScreen(
                 }
             }
 
+            if (uiState.isExtractingAudio) {
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
             // Display download list based on selected tab
             Box(
                 modifier = Modifier
@@ -200,6 +208,7 @@ fun DownloadScreen(
                         },
                         onOpen = { id -> viewModel.openDownload(id) },
                         onShare = { id -> viewModel.shareDownload(id) },
+                        onExtractAudio = { id -> viewModel.requestExtractAudio(id) },
                         // Show rename dialog (collect new name) instead of performing immediate rename
                         onRename = { id, name -> viewModel.showRenameDialogFor(id, name) },
                         onDelete = { id -> viewModel.deleteSingleDownload(id) },
@@ -282,6 +291,15 @@ fun DownloadScreen(
         DownloadInfoDialog(
             downloadItem = uiState.infoDownloadItem!!,
             onDismiss = { viewModel.dismissInfoDialog() }
+        )
+    }
+
+    // MP3 Bitrate Picker (when user chooses "Extract audio only" from item menu)
+    val pendingId = uiState.pendingAudioExtractionId
+    if (pendingId != null) {
+        Mp3BitratePickerDialog(
+            onDismiss = { viewModel.cancelAudioExtraction() },
+            onConfirm = { bitrate -> viewModel.extractAudio(pendingId, bitrate) }
         )
     }
 
