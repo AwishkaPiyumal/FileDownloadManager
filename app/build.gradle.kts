@@ -115,4 +115,9 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+
+    implementation("com.github.naman14:TAndroidLame:1.1") {
+        exclude(group = "com.android.support", module = "appcompat-v7")
+        exclude(group = "com.android.support", module = "support-v4")
+    }
 }

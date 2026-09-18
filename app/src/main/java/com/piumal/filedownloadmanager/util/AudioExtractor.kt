@@ -8,6 +8,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.ByteOrder
+import com.naman14.androidlame.AndroidLame
+import com.naman14.androidlame.LameBuilder
 
 /**
  * Selectable output quality for MP3 extraction. kbps values are passed straight through to the
@@ -237,15 +239,13 @@ object AudioExtractor {
  */
 class Lame3Mp3Encoder : Mp3Encoder {
 
-    // import com.naman14.androidlame.AndroidLame
-    // import com.naman14.androidlame.LameBuilder
-    private var lame: Any? = null // replace Any with AndroidLame once the dependency is added
+    private var lame: AndroidLame? = null
     private var channelCount: Int = 2
     private var scratch = ByteArray(0)
 
     override fun init(sampleRateHz: Int, channelCount: Int, bitrateKbps: Int) {
         this.channelCount = channelCount
-        /*
+
         val mode = if (channelCount == 1) LameBuilder.Mode.MONO else LameBuilder.Mode.STEREO
         lame = LameBuilder()
             .setInSampleRate(sampleRateHz)
@@ -254,12 +254,7 @@ class Lame3Mp3Encoder : Mp3Encoder {
             .setOutSampleRate(sampleRateHz)
             .setMode(mode)
             .setQuality(5)
-            .build()
-        */
-        throw NotImplementedError(
-            "Lame3Mp3Encoder is an integration template - add the LAME dependency (see class doc " +
-                "comment), uncomment the real implementation, and remove this line."
-        )
+            .build() as AndroidLame
     }
 
     override fun encode(samples: ShortArray, sampleCount: Int): ByteArray {
@@ -272,20 +267,17 @@ class Lame3Mp3Encoder : Mp3Encoder {
         // sources; still worth double-checking against whichever fork you add).
         val framesPerChannel = sampleCount / channelCount
 
-        /*
-        val bytesWritten = (lame as AndroidLame).encodeBufferInterleaved(samples, framesPerChannel, scratch)
+
+
+        val bytesWritten = lame!!.encodeBufferInterLeaved(samples, framesPerChannel, scratch)
         return if (bytesWritten > 0) scratch.copyOf(bytesWritten) else ByteArray(0)
-        */
-        return ByteArray(0)
     }
 
     override fun flush(): ByteArray {
         val buf = ByteArray(7200)
-        /*
-        val bytesWritten = (lame as? AndroidLame)?.lameFlush(buf) ?: 0
+
+        val bytesWritten = lame?.flush(buf) ?: 0
         return if (bytesWritten > 0) buf.copyOf(bytesWritten) else ByteArray(0)
-        */
-        return ByteArray(0)
     }
 
     override fun release() {
