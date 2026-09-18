@@ -1,6 +1,6 @@
 package com.piumal.filedownloadmanager.domain.usecase.download
 
-import android.util.Log
+import com.piumal.filedownloadmanager.util.Logger
 import com.piumal.filedownloadmanager.domain.model.DownloadStatus
 import com.piumal.filedownloadmanager.domain.repository.DownloadRepository
 import kotlinx.coroutines.flow.first
@@ -35,7 +35,7 @@ class ResumeAllDownloadsUseCase @Inject constructor(
      */
     suspend operator fun invoke(): Result<Int> {
         return try {
-            Log.d(TAG, "=== Starting Resume All Downloads ===")
+            Logger.d(TAG, "=== Starting Resume All Downloads ===")
 
             // Get all downloads
             val allDownloads = downloadRepository.getAllDownloads().first()
@@ -45,10 +45,10 @@ class ResumeAllDownloadsUseCase @Inject constructor(
                 download.status == DownloadStatus.PAUSED
             }
 
-            Log.d(TAG, "Found ${pausedDownloads.size} paused downloads to resume")
+            Logger.d(TAG, "Found ${pausedDownloads.size} paused downloads to resume")
 
             if (pausedDownloads.isEmpty()) {
-                Log.d(TAG, "No paused downloads to resume")
+                Logger.d(TAG, "No paused downloads to resume")
                 return Result.success(0)
             }
 
@@ -56,20 +56,20 @@ class ResumeAllDownloadsUseCase @Inject constructor(
             var resumedCount = 0
             pausedDownloads.forEach { download ->
                 try {
-                    Log.d(TAG, "Resuming download: ${download.id} - ${download.fileName}")
+                    Logger.d(TAG, "Resuming download: ${download.id} - ${download.fileName}")
                     downloadRepository.resumeDownload(download.id)
                     resumedCount++
                 } catch (e: Exception) {
-                    Log.e(TAG, "Failed to resume download ${download.id}: ${e.message}")
+                    Logger.e(TAG, "Failed to resume download ${download.id}: ${e.message}")
                     // Continue with other downloads even if one fails
                 }
             }
 
-            Log.d(TAG, "=== Resume All Downloads Complete: $resumedCount resumed ===")
+            Logger.d(TAG, "=== Resume All Downloads Complete: $resumedCount resumed ===")
             Result.success(resumedCount)
 
         } catch (e: Exception) {
-            Log.e(TAG, "Error resuming all downloads: ${e.message}", e)
+            Logger.e(TAG, "Error resuming all downloads: ${e.message}", e)
             Result.failure(e)
         }
     }

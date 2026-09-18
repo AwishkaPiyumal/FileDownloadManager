@@ -3,7 +3,7 @@ package com.piumal.filedownloadmanager.data.download
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
+import com.piumal.filedownloadmanager.util.Logger
 
 /**
  * BootReceiver - Broadcast Receiver
@@ -33,16 +33,17 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
         if (context == null || intent == null) return
 
-        Log.d(TAG, "Boot completed, action: ${intent.action}")
+        Logger.d(TAG, "Boot completed, action: ${intent.action}")
 
         when (intent.action) {
             Intent.ACTION_BOOT_COMPLETED,
             "android.intent.action.QUICKBOOT_POWERON" -> {
                 // Device has booted, resume all pending downloads
-                Log.d(TAG, "Resuming pending downloads after boot")
+                Logger.d(TAG, "Resuming pending downloads after boot")
                 DownloadService.resumeAllPending(context)
             }
         }
     }
 }
+
 

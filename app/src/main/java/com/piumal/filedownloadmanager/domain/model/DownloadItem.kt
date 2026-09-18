@@ -12,6 +12,7 @@ data class DownloadItem(
     val status: DownloadStatus,
     val url: String,
     val filePath: String,
+    val uri: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val scheduleTime: Long? = null  // Timestamp when download should start (null = immediate)
 ) {

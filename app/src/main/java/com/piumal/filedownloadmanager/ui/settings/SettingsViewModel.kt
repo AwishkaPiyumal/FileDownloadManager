@@ -1,9 +1,12 @@
+@file:Suppress("unused")
+
 package com.piumal.filedownloadmanager.ui.settings
 
 import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.piumal.filedownloadmanager.domain.util.DownloadStoragePaths
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,8 +37,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         private const val KEY_NOTIFICATIONS = "notifications_enabled"
         private const val KEY_NOTIFY_COMPLETION = "notify_download_completion"
         private const val KEY_NOTIFY_FAILURE = "notify_download_failure"
-        private const val KEY_COMPLETION_RINGTONE = "completion_ringtone"
-        private const val KEY_FAILURE_RINGTONE = "failure_ringtone"
         private const val KEY_VIBRATE = "notification_vibrate"
         private const val KEY_LIGHT = "notification_light"
         // Advanced
@@ -59,7 +60,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     useMobileNetwork = sharedPreferences.getBoolean(KEY_USE_MOBILE_NETWORK, false),
                     darkMode = sharedPreferences.getBoolean(KEY_DARK_MODE, false),
                     // Download Settings
-                    defaultDownloadFolder = sharedPreferences.getString(KEY_DEFAULT_DOWNLOAD_FOLDER, "Download/FileDownloadManager") ?: "Download/FileDownloadManager",
+                    defaultDownloadFolder = sharedPreferences.getString(KEY_DEFAULT_DOWNLOAD_FOLDER, DownloadStoragePaths.DEFAULT_UI_FOLDER_LABEL) ?: DownloadStoragePaths.DEFAULT_UI_FOLDER_LABEL,
                     autoFetchUrl = sharedPreferences.getBoolean(KEY_AUTO_FETCH_URL, true),
                     askDownloadFolder = sharedPreferences.getBoolean(KEY_ASK_DOWNLOAD_FOLDER, false),
                     parallelFileDownload = sharedPreferences.getInt(KEY_PARALLEL_DOWNLOAD, 3),
@@ -69,8 +70,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     notificationsEnabled = sharedPreferences.getBoolean(KEY_NOTIFICATIONS, true),
                     notifyDownloadCompletion = sharedPreferences.getBoolean(KEY_NOTIFY_COMPLETION, true),
                     notifyDownloadFailure = sharedPreferences.getBoolean(KEY_NOTIFY_FAILURE, true),
-                    completionRingtone = sharedPreferences.getString(KEY_COMPLETION_RINGTONE, "Default") ?: "Default",
-                    failureRingtone = sharedPreferences.getString(KEY_FAILURE_RINGTONE, "Default") ?: "Default",
                     vibrateEnabled = sharedPreferences.getBoolean(KEY_VIBRATE, true),
                     lightEnabled = sharedPreferences.getBoolean(KEY_LIGHT, true),
                     // Advanced
@@ -214,15 +213,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         saveBoolean(KEY_NOTIFY_FAILURE, newValue)
     }
 
-    fun setCompletionRingtone(name: String) {
-        _uiState.update { it.copy(completionRingtone = name) }
-        saveString(KEY_COMPLETION_RINGTONE, name)
-    }
-
-    fun setFailureRingtone(name: String) {
-        _uiState.update { it.copy(failureRingtone = name) }
-        saveString(KEY_FAILURE_RINGTONE, name)
-    }
 
     fun toggleVibrate() {
         val newValue = !_uiState.value.vibrateEnabled
@@ -243,14 +233,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun saveBoolean(key: String, value: Boolean) {
-        sharedPreferences.edit().putBoolean(key, value).commit()  // Changed from apply() to commit()
+        sharedPreferences.edit().putBoolean(key, value).apply()
     }
 
     private fun saveInt(key: String, value: Int) {
-        sharedPreferences.edit().putInt(key, value).commit()  // Changed from apply() to commit()
+        sharedPreferences.edit().putInt(key, value).apply()
     }
 
     private fun saveString(key: String, value: String) {
-        sharedPreferences.edit().putString(key, value).commit()  // Changed from apply() to commit()
+        sharedPreferences.edit().putString(key, value).apply()
     }
 }

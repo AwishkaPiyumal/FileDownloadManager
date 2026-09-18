@@ -17,7 +17,9 @@ fun DownloadItemMoreOption(
     expanded: Boolean,
     onDismiss: () -> Unit,
     onMenuItemClick: (DownloadItemMoreMenuAction) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    isVideoFile: Boolean = false,
 ) {
 
     DropdownMenu(
@@ -29,7 +31,7 @@ fun DownloadItemMoreOption(
             text = {
                 Text(
                     text = "Open",
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if(enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     style = MaterialTheme.typography.labelMedium
                 )
             },
@@ -37,6 +39,7 @@ fun DownloadItemMoreOption(
                 onMenuItemClick(DownloadItemMoreMenuAction.Open)
                 onDismiss()
             },
+            enabled = enabled,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
             modifier = Modifier.height(32.dp)
         )
@@ -44,7 +47,7 @@ fun DownloadItemMoreOption(
             text = {
                 Text(
                     text = "Show in Folder",
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if(enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     style = MaterialTheme.typography.labelMedium
                 )
             },
@@ -52,6 +55,7 @@ fun DownloadItemMoreOption(
                 onMenuItemClick(DownloadItemMoreMenuAction.ShowInFolder)
                 onDismiss()
             },
+            enabled = enabled,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
             modifier = Modifier.height(32.dp)
         )
@@ -59,7 +63,7 @@ fun DownloadItemMoreOption(
             text = {
                 Text(
                     text = "Share file",
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if(enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     style = MaterialTheme.typography.labelMedium
                 )
             },
@@ -67,9 +71,28 @@ fun DownloadItemMoreOption(
                 onMenuItemClick(DownloadItemMoreMenuAction.ShareFile)
                 onDismiss()
             },
+            enabled = enabled,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
             modifier = Modifier.height(32.dp)
         )
+        if (isVideoFile) {
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        text = "Extract audio only",
+                        color = if(enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                },
+                onClick = {
+                    onMenuItemClick(DownloadItemMoreMenuAction.ExtractAudio)
+                    onDismiss()
+                },
+                enabled = enabled,
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                modifier = Modifier.height(32.dp)
+            )
+        }
         HorizontalDivider(
             modifier = Modifier.padding(vertical = 8.dp),
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
@@ -79,7 +102,7 @@ fun DownloadItemMoreOption(
             text = {
                 Text(
                     text = "Show info",
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if(enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     style = MaterialTheme.typography.labelMedium
                 )
             },
@@ -87,6 +110,7 @@ fun DownloadItemMoreOption(
                 onMenuItemClick(DownloadItemMoreMenuAction.ShowInfo)
                 onDismiss()
             },
+            enabled = enabled,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
             modifier = Modifier.height(32.dp)
         )
@@ -100,7 +124,7 @@ fun DownloadItemMoreOption(
             text = {
                 Text(
                     text = "Rename file",
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if(enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     style = MaterialTheme.typography.labelMedium
                 )
             },
@@ -108,21 +132,23 @@ fun DownloadItemMoreOption(
                 onMenuItemClick(DownloadItemMoreMenuAction.RenameFile)
                 onDismiss()
             },
+            enabled = enabled,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
             modifier = Modifier.height(32.dp)
         )
         DropdownMenuItem(
             text = {
                 Text(
-                    text = "Move to...",
-                    color = MaterialTheme.colorScheme.onSurface,
+                    text = "Copy to...",
+                    color = if(enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     style = MaterialTheme.typography.labelMedium
                 )
             },
             onClick = {
-                onMenuItemClick(DownloadItemMoreMenuAction.Moveto)
+                onMenuItemClick(DownloadItemMoreMenuAction.Copyto)
                 onDismiss()
             },
+            enabled = enabled,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
             modifier = Modifier.height(32.dp)
         )
@@ -130,7 +156,7 @@ fun DownloadItemMoreOption(
             text = {
                 Text(
                     text = "Delete file",
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if(enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     style = MaterialTheme.typography.labelMedium
                 )
             },
@@ -138,6 +164,7 @@ fun DownloadItemMoreOption(
                 onMenuItemClick(DownloadItemMoreMenuAction.Deletefile)
                 onDismiss()
             },
+            enabled = enabled,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
             modifier = Modifier.height(32.dp)
         )
@@ -145,7 +172,7 @@ fun DownloadItemMoreOption(
             text = {
                 Text(
                     text = "Remove from list",
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if(enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                     style = MaterialTheme.typography.labelMedium
                 )
             },
@@ -153,6 +180,7 @@ fun DownloadItemMoreOption(
                 onMenuItemClick(DownloadItemMoreMenuAction.Removefromlist)
                 onDismiss()
             },
+            enabled = enabled,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
             modifier = Modifier.height(32.dp)
         )
@@ -162,9 +190,10 @@ sealed class DownloadItemMoreMenuAction {
     data object Open : DownloadItemMoreMenuAction()
     data object ShowInFolder : DownloadItemMoreMenuAction()
     data object ShareFile : DownloadItemMoreMenuAction()
+    data object ExtractAudio : DownloadItemMoreMenuAction()
     data object ShowInfo : DownloadItemMoreMenuAction()
     data object RenameFile : DownloadItemMoreMenuAction()
-    data object Moveto : DownloadItemMoreMenuAction()
+    data object Copyto : DownloadItemMoreMenuAction()
     data object Deletefile : DownloadItemMoreMenuAction()
     data object Removefromlist : DownloadItemMoreMenuAction()
 }

@@ -6,7 +6,9 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
+import android.media.AudioAttributes
+import android.media.AudioManager
+import android.media.RingtoneManager
 import android.os.Build
 import android.webkit.MimeTypeMap
 import androidx.core.app.NotificationCompat
@@ -34,7 +36,12 @@ import java.io.File
  * - Called by DownloadService
  * - No direct UI dependencies
  */
-class DownloadNotificationHelper(private val context: Context) {
+import com.piumal.filedownloadmanager.storage.StorageManager
+// ...
+class DownloadNotificationHelper(
+    private val context: Context,
+    private val storageManager: StorageManager
+) {
 
     private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -67,8 +74,13 @@ class DownloadNotificationHelper(private val context: Context) {
      */
     private fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Progress channel - Low importance, no sound
-            val progressChannel = NotificationChannel(
+            val defaultSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            val alertAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+
+            NotificationChannel(
                 CHANNEL_ID_PROGRESS,
                 CHANNEL_NAME_PROGRESS,
                 NotificationManager.IMPORTANCE_LOW
@@ -78,33 +90,37 @@ class DownloadNotificationHelper(private val context: Context) {
                 enableVibration(false)
                 setSound(null, null)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            }
+            }.also(notificationManager::createNotificationChannel)
 
-            // Complete channel - Default importance, with sound
-            val completeChannel = NotificationChannel(
+            NotificationChannel(
                 CHANNEL_ID_COMPLETE,
                 CHANNEL_NAME_COMPLETE,
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = "Notifies when download completes"
                 setShowBadge(true)
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 250, 250, 250)
+                enableLights(true)
+                lightColor = -0x10000
+                setSound(defaultSound, alertAttributes)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            }
+            }.also(notificationManager::createNotificationChannel)
 
-            // Failed channel - Default importance, with sound
-            val failedChannel = NotificationChannel(
+            NotificationChannel(
                 CHANNEL_ID_FAILED,
                 CHANNEL_NAME_FAILED,
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = "Notifies when download fails"
                 setShowBadge(true)
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 250, 250, 250)
+                enableLights(true)
+                lightColor = -0x10000
+                setSound(defaultSound, alertAttributes)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            }
-
-            notificationManager.createNotificationChannel(progressChannel)
-            notificationManager.createNotificationChannel(completeChannel)
-            notificationManager.createNotificationChannel(failedChannel)
+            }.also(notificationManager::createNotificationChannel)
         }
     }
 
@@ -126,8 +142,6 @@ class DownloadNotificationHelper(private val context: Context) {
         percentage: Int,
         status: DownloadStatus
     ) {
-        android.util.Log.d("NotificationHelper", "showProgressNotification called: $fileName, $percentage%, Status: $status")
-
         val notificationId = getNotificationId(downloadId)
 
         // Format size text
@@ -137,8 +151,6 @@ class DownloadNotificationHelper(private val context: Context) {
             DownloadStatus.PAUSED -> "Paused • $percentage% • $sizeText"
             else -> "$percentage% • $sizeText"
         }
-
-        android.util.Log.d("NotificationHelper", "Notification ID: $notificationId, Text: $statusText")
 
         // Build notification
         val builder = NotificationCompat.Builder(context, CHANNEL_ID_PROGRESS)
@@ -206,13 +218,16 @@ class DownloadNotificationHelper(private val context: Context) {
      * @param downloadId Unique download identifier
      * @param fileName Name of the downloaded file
      * @param filePath Full path to the downloaded file
+     * @param vibrateEnabled Whether to vibrate on completion
+     * @param lightEnabled Whether to flash light on completion
      */
     fun showCompletedNotification(
         downloadId: String,
         fileName: String,
-        filePath: String
+        filePath: String,
+        vibrateEnabled: Boolean = true,
+        lightEnabled: Boolean = true
     ) {
-        android.util.Log.d("NotificationHelper", "showCompletedNotification called: $fileName at $filePath")
 
         val notificationId = getNotificationId(downloadId)
 
@@ -230,10 +245,19 @@ class DownloadNotificationHelper(private val context: Context) {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(openIntent)
 
+        val defaultSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        builder.setSound(defaultSound, AudioManager.STREAM_NOTIFICATION)
+        
+        if (vibrateEnabled) {
+            builder.setVibrate(longArrayOf(0, 250, 250, 250))
+        }
+        
+        if (lightEnabled) {
+            builder.setLights(-0x10000, 1000, 1000)
+        }
+
         // Show notification - replaces existing notification with same ID
-        android.util.Log.d("NotificationHelper", "Displaying completion notification ID: $notificationId")
         notificationManager.notify(notificationId, builder.build())
-        android.util.Log.d("NotificationHelper", "Completion notification displayed")
     }
 
     /**
@@ -243,14 +267,16 @@ class DownloadNotificationHelper(private val context: Context) {
      * @param downloadId Unique download identifier
      * @param fileName Name of the file
      * @param errorMessage Error message (optional)
+     * @param vibrateEnabled Whether to vibrate on failure
+     * @param lightEnabled Whether to flash light on failure
      */
     fun showFailedNotification(
         downloadId: String,
         fileName: String,
-        errorMessage: String? = null
+        errorMessage: String? = null,
+        vibrateEnabled: Boolean = true,
+        lightEnabled: Boolean = true
     ) {
-        android.util.Log.d("NotificationHelper", "showFailedNotification called: $fileName, Error: $errorMessage")
-
         val notificationId = getNotificationId(downloadId)
 
         val message = errorMessage?.let { "Failed: $it" } ?: "Download failed"
@@ -279,14 +305,23 @@ class DownloadNotificationHelper(private val context: Context) {
                 retryPendingIntent
             )
 
+        val defaultSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        builder.setSound(defaultSound, AudioManager.STREAM_NOTIFICATION)
+        
+        if (vibrateEnabled) {
+            builder.setVibrate(longArrayOf(0, 250, 250, 250))
+        }
+        
+        if (lightEnabled) {
+            builder.setLights(-0x10000, 1000, 1000)
+        }
+
         // Add content intent to open app
         val contentIntent = createOpenAppIntent()
         builder.setContentIntent(contentIntent)
 
         // Show notification
-        android.util.Log.d("NotificationHelper", "Displaying failed notification ID: $notificationId")
         notificationManager.notify(notificationId, builder.build())
-        android.util.Log.d("NotificationHelper", "Failed notification displayed")
     }
 
     /**
@@ -403,24 +438,14 @@ class DownloadNotificationHelper(private val context: Context) {
      * Create intent to open downloaded file
      */
     private fun createOpenFileIntent(filePath: String): PendingIntent {
-        val file = File(filePath)
+        val uri = storageManager.getShareableUri(context, filePath)
 
-        // Check if file exists
-        if (!file.exists()) {
-            android.util.Log.e("NotificationHelper", "File does not exist: $filePath")
-            // Return intent to open app instead
+        if (uri == null) {
             return createOpenAppIntent()
         }
 
-        val uri = androidx.core.content.FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            file
-        )
-
         // Get MIME type
         val mimeType = getMimeType(filePath) ?: "*/*"
-        android.util.Log.d("NotificationHelper", "Opening file: $filePath, MIME: $mimeType")
 
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, mimeType)

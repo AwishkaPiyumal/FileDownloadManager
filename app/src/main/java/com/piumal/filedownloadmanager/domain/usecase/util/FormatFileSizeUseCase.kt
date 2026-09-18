@@ -1,5 +1,6 @@
 package com.piumal.filedownloadmanager.domain.usecase.util
 
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.log10
@@ -25,7 +26,7 @@ class FormatFileSizeUseCase @Inject constructor() {
 
         val size = bytes / 1024.0.pow(digitGroups.toDouble())
 
-        return String.format("%.2f %s", size, units[digitGroups])
+        return String.format(Locale.getDefault(), "%.2f %s", size, units[digitGroups])
     }
 
     /**

@@ -2,9 +2,11 @@ package com.piumal.filedownloadmanager.di
 
 import android.content.Context
 import androidx.room.Room
+import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 import com.piumal.filedownloadmanager.data.download.DownloadManager
 import com.piumal.filedownloadmanager.data.local.DownloadDatabase
 import com.piumal.filedownloadmanager.data.local.dao.DownloadDao
+import com.piumal.filedownloadmanager.data.security.DatabasePassphraseManager
 import com.piumal.filedownloadmanager.data.repository.DownloadRepositoryImpl
 import com.piumal.filedownloadmanager.domain.repository.DownloadRepository
 import dagger.Module
@@ -17,18 +19,31 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+@Provides
+@Singleton
+fun provideStorageManager(
+    @ApplicationContext context: Context
+): com.piumal.filedownloadmanager.storage.StorageManager {
+    return com.piumal.filedownloadmanager.storage.StorageManagerImpl(context)
+}
 
-    @Provides
-    @Singleton
-    fun provideDownloadDatabase(
+@Provides
+@Singleton
+fun provideDownloadDatabase(
+// ...
+
         @ApplicationContext context: Context
     ): DownloadDatabase {
+        val passphrase = DatabasePassphraseManager.getOrCreatePassphrase(context)
+        val factory = SupportOpenHelperFactory(passphrase)
+
         return Room.databaseBuilder(
             context,
             DownloadDatabase::class.java,
             DownloadDatabase.DATABASE_NAME
         )
-            .fallbackToDestructiveMigration()
+            .openHelperFactory(factory)
+            .addMigrations(com.piumal.filedownloadmanager.data.local.migration.MIGRATION_2_3)
             .build()
     }
 
@@ -41,9 +56,10 @@ object AppModule {
     @Provides
     @Singleton
     fun provideDownloadManager(
-        @ApplicationContext context: Context
+        @ApplicationContext context: Context,
+        storageManager: com.piumal.filedownloadmanager.storage.StorageManager
     ): DownloadManager {
-        return DownloadManager(context)
+        return DownloadManager(context, storageManager)
     }
 
     @Provides

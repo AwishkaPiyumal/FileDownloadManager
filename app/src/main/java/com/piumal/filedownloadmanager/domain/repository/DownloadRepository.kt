@@ -40,6 +40,33 @@ interface DownloadRepository {
     suspend fun updateDownload(download: DownloadItem)
 
     /**
+     * Physically delete the file from storage first, then remove the database record.
+     * This is used by the "Delete file" action.
+     */
+    suspend fun deleteDownloadFile(id: String): Result<Unit>
+
+    /**
+     * Copy the file to a new destination.
+     * This is used by the "Copy to..." action.
+     */
+    suspend fun copyDownload(item: DownloadItem, destinationFolderPath: String): Result<Unit>
+
+    /**
+     * Open a completed download using a FileProvider-backed Intent.
+     */
+    suspend fun openDownload(id: String): Result<Unit>
+
+    /**
+     * Share a completed download using a FileProvider-backed Intent.
+     */
+    suspend fun shareDownload(id: String, chooserTitle: String? = null): Result<Unit>
+
+    /**
+     * Show the download in a file manager / folder view.
+     */
+    suspend fun showInFolder(id: String): Result<Unit>
+
+    /**
      * Delete download
      */
     suspend fun deleteDownload(id: String)

@@ -14,11 +14,6 @@ sealed class Screen(
     object Settings : Screen("settings", "Settings", iconRes= R.drawable.settings_24px)
     object Support : Screen("help", "Help & Support", iconRes= R.drawable.help_center_24px)
     object About : Screen("info", "About", iconRes= R.drawable.info_24px)
-
-    // Settings detail screens
-    object DownloadSettings : Screen("download_settings", "Download Settings")
-    object NotificationSettings : Screen("notification_settings", "Notification")
-    object AdvancedSettings : Screen("advanced_settings", "Advanced Settings")
 }
 
 val bottomNavItems = listOf(

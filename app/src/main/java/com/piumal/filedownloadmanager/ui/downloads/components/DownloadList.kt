@@ -21,24 +21,33 @@ import com.piumal.filedownloadmanager.domain.model.DownloadItem
  * @param onPauseClick Callback when pause button is clicked
  * @param onResumeClick Callback when resume button is clicked
  * @param onRetryClick Callback when retry button is clicked
+ * @param onOpen Callback when open is clicked
+ * @param onShare Callback when share is clicked
+ * @param onRename Callback when rename is clicked
+ * @param onDelete Callback when delete is clicked
  * @param isSelectionMode Whether selection mode is active
- * @param selectedIds Set of selected download IDs
- * @param onLongPress Callback when item is long pressed
- * @param onItemClick Callback when item is clicked (for selection toggle)
- * @param modifier Optional modifier for customization
  */
 @Composable
 fun DownloadList(
     downloads: List<DownloadItem>,
+    modifier: Modifier = Modifier,
     onMoreClick: (DownloadItem) -> Unit,
     onPauseClick: (String) -> Unit = {},
     onResumeClick: (String) -> Unit = {},
     onRetryClick: (String) -> Unit = {},
+    onOpen: (String) -> Unit = {},
+    onShare: (String) -> Unit = {},
+    onExtractAudio: (String) -> Unit = {},
+    onRename: (String, String) -> Unit = { id, name -> },
+    onDelete: (String) -> Unit = {},
+    onShowInFolder: (String) -> Unit = {},
+    onShowInfo: (String) -> Unit = {},
+    onCopyTo: (String) -> Unit = {},
+    onRemoveFromList: (String) -> Unit = {},
     isSelectionMode: Boolean = false,
     selectedIds: Set<String> = emptySet(),
     onLongPress: (String) -> Unit = {},
-    onItemClick: (String) -> Unit = {},
-    modifier: Modifier = Modifier
+    onItemClick: (String) -> Unit = {}
 ) {
     if (downloads.isEmpty()) {
         // Empty state
@@ -56,10 +65,20 @@ fun DownloadList(
             ) { downloadItem ->
                 DownloadItemCard(
                     downloadItem = downloadItem,
+                    actionsEnabled = downloadItem.status == com.piumal.filedownloadmanager.domain.model.DownloadStatus.COMPLETED,
                     onMoreClick = onMoreClick,
                     onPauseClick = onPauseClick,
                     onResumeClick = onResumeClick,
                     onRetryClick = onRetryClick,
+                    onOpen = onOpen,
+                    onShare = onShare,
+                    onExtractAudio = onExtractAudio,
+                    onRename = onRename,
+                    onDelete = onDelete,
+                    onShowInFolder = onShowInFolder,
+                    onShowInfo = onShowInfo,
+                    onCopyTo = onCopyTo,
+                    onRemoveFromList = onRemoveFromList,
                     isSelectionMode = isSelectionMode,
                     isSelected = selectedIds.contains(downloadItem.id),
                     onLongPress = onLongPress,

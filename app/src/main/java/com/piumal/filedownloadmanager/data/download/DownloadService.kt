@@ -8,8 +8,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
-import android.util.Log
+import com.piumal.filedownloadmanager.util.Logger
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.piumal.filedownloadmanager.data.download.DownloadManager
 import com.piumal.filedownloadmanager.data.download.DownloadNotificationHelper
 import com.piumal.filedownloadmanager.data.download.DownloadQueueManager
@@ -27,7 +28,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import com.piumal.filedownloadmanager.storage.StorageManager
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -35,6 +36,10 @@ class DownloadService : Service() {
 
     @Inject
     lateinit var downloadManager: DownloadManager
+
+    @Inject
+    lateinit var storageManager: StorageManager
+// ...
 
     @Inject
     lateinit var downloadDao: DownloadDao
@@ -48,6 +53,12 @@ class DownloadService : Service() {
     @Inject
     lateinit var observerNotifyFailureUseCase: ObserveNotifyDownloadFailureUseCase
 
+    @Inject
+    lateinit var observeVibrateUseCase: com.piumal.filedownloadmanager.domain.usecase.settings.ObserveVibrateUseCase
+
+    @Inject
+    lateinit var observeLightUseCase: com.piumal.filedownloadmanager.domain.usecase.settings.ObserveLightUseCase
+
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val activeDownloads = mutableMapOf<String, Job>()
     private lateinit var notificationManager: NotificationManager
@@ -59,7 +70,11 @@ class DownloadService : Service() {
     @Volatile
     private var notifyFailureEnabled: Boolean = true
 
-    private val settingsLock = java.util.concurrent.locks.ReentrantReadWriteLock()
+    @Volatile
+    private var vibrateEnabled: Boolean = true
+
+    @Volatile
+    private var lightEnabled: Boolean = true
 
     companion object {
         private const val TAG = "DownloadService"
@@ -80,23 +95,23 @@ class DownloadService : Service() {
         private const val REQUEST_CODE_CANCEL = 102
 
         fun startDownload(context: Context, downloadId: String) {
-            Log.d(TAG, "DownloadService.startDownload() CALLED with ID: $downloadId")
+            Logger.d(TAG, "DownloadService.startDownload() CALLED with ID: $downloadId")
             try {
                 val intent = Intent(context, DownloadService::class.java).apply {
                     action = ACTION_START_DOWNLOAD
                     putExtra(EXTRA_DOWNLOAD_ID, downloadId)
                 }
-                Log.d(TAG, "Intent created, starting service...")
+                Logger.d(TAG, "Intent created, starting service...")
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     val result = context.startForegroundService(intent)
-                    Log.d(TAG, "startForegroundService returned: $result")
+                    Logger.d(TAG, "startForegroundService returned: $result")
                 } else {
                     val result = context.startService(intent)
-                    Log.d(TAG, "startService returned: $result")
+                    Logger.d(TAG, "startService returned: $result")
                 }
-                Log.d(TAG, "Service start command sent successfully")
+                Logger.d(TAG, "Service start command sent successfully")
             } catch (e: Exception) {
-                Log.e(TAG, "EXCEPTION starting service", e)
+                Logger.e(TAG, "EXCEPTION starting service", e)
             }
         }
 
@@ -114,43 +129,76 @@ class DownloadService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "=== Service onCreate() called ===")
+        Logger.d(TAG, "=== Service onCreate() called ===")
         try {
             notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-            Log.d(TAG, "NotificationManager obtained")
-            notificationHelper = DownloadNotificationHelper(this)
-            Log.d(TAG, "NotificationHelper initialized")
+            Logger.d(TAG, "NotificationManager obtained")
+            notificationHelper = DownloadNotificationHelper(this, storageManager)
+            Logger.d(TAG, "NotificationHelper initialized")
             serviceScope.launch {
                 try {
                     observerNotifyCompletionUseCase().collect { enabled ->
                         notifyCompletionEnabled = enabled
-                        Log.d(TAG, "notifyCompletionEnabled updated: $enabled")
+                        Logger.d(TAG, "notifyCompletionEnabled updated: $enabled")
                     }
                 } catch (e: Exception) {
-                    Log.d(TAG, "notify completion observer cancelled (expected on service shutdown)")
+                    Logger.d(TAG, "notify completion observer cancelled (expected on service shutdown)")
                 }
             }
             serviceScope.launch {
                 try {
                     observerNotifyFailureUseCase().collect { enabled ->
                         notifyFailureEnabled = enabled
-                        Log.d(TAG, "notifyFailureEnabled updated: $enabled")
+                        Logger.d(TAG, "notifyFailureEnabled updated: $enabled")
                     }
                 } catch (e: Exception) {
-                    Log.d(TAG, "notify failure observer cancelled (expected on service shutdown)")
+                    Logger.d(TAG, "notify failure observer cancelled (expected on service shutdown)")
+                }
+            }
+            serviceScope.launch {
+                try {
+                    observeVibrateUseCase().collect { enabled ->
+                        vibrateEnabled = enabled
+                        Logger.d(TAG, "vibrateEnabled updated: $enabled")
+                    }
+                } catch (e: Exception) {
+                    Logger.d(TAG, "vibrate observer cancelled (expected on service shutdown)")
+                }
+            }
+            serviceScope.launch {
+                try {
+                    observeLightUseCase().collect { enabled ->
+                        lightEnabled = enabled
+                        Logger.d(TAG, "lightEnabled updated: $enabled")
+                    }
+                } catch (e: Exception) {
+                    Logger.d(TAG, "light observer cancelled (expected on service shutdown)")
+                }
+            }
+
+            // Reconcile any downloads left stuck in DOWNLOADING status from a previous
+            // process/service death (OOM kill, force-stop, dataSync foreground timeout, etc).
+            // Without this, resumeAllPendingDownloads() never picks them up again because it
+            // only queries PAUSED/QUEUED/FAILED, so they'd show a frozen progress bar forever.
+            serviceScope.launch {
+                try {
+                    downloadQueueManager.syncWithDatabase()
+                    Logger.d(TAG, "Synced queue state with database on service start")
+                } catch (e: Exception) {
+                    Logger.e(TAG, "Error syncing queue with database on start", e)
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error initializing service components", e)
+            Logger.e(TAG, "Error initializing service components", e)
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "=== onStartCommand called ===")
+        Logger.d(TAG, "=== onStartCommand called ===")
         when (intent?.action) {
             ACTION_START_DOWNLOAD -> {
                 val downloadId = intent.getStringExtra(EXTRA_DOWNLOAD_ID)
-                Log.d(TAG, "ACTION_START_DOWNLOAD - Download ID: $downloadId")
+                Logger.d(TAG, "ACTION_START_DOWNLOAD - Download ID: $downloadId")
                 if (downloadId != null) startDownload(downloadId)
             }
             ACTION_PAUSE_DOWNLOAD -> {
@@ -166,16 +214,6 @@ class DownloadService : Service() {
                 if (downloadId != null) cancelDownload(downloadId)
             }
             ACTION_RESUME_ALL_PENDING -> {
-                if (!isForegroundStarted) {
-                    try {
-                        createNotificationChannel()
-                        val notification = createForegroundNotification()
-                        startForeground(FOREGROUND_NOTIFICATION_ID, notification)
-                        isForegroundStarted = true
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error starting foreground for resume all", e)
-                    }
-                }
                 resumeAllPendingDownloads()
             }
         }
@@ -184,8 +222,34 @@ class DownloadService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    // Android 15+ (API 35+): dataSync foreground services get a 6-hour budget per rolling
+    // 24-hour window while the app is backgrounded. When it's exhausted, the system calls this
+    // and expects stopSelf() within a few seconds - if we don't call it, the OS throws an
+    // uncatchable ForegroundServiceDidNotStopInTimeException that kills the whole app process,
+    // and any later attempt to re-enter foreground that day throws
+    // ForegroundServiceStartNotAllowedException instead of starting. This override is additive:
+    // on API < 35 the platform never calls it, so behavior there is unchanged. Reopening the app
+    // (bringing it to the foreground) resets the 6-hour budget, so downloads can resume normally
+    // afterwards; see onDestroy()/syncWithDatabase() for how in-flight state is reconciled.
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        super.onTimeout(startId, fgsType)
+        Logger.w(TAG, "onTimeout(): dataSync 6h/24h background budget exhausted (fgsType=$fgsType) - stopping service")
+        isForegroundStarted = false
+        foregroundDownloadId = null
+        stopSelf()
+    }
+
     override fun onDestroy() {
-        Log.d(TAG, "Service destroyed")
+        Logger.d(TAG, "Service destroyed")
+        NotificationManagerCompat.from(this).cancel(FOREGROUND_NOTIFICATION_ID)
+        if (isForegroundStarted) {
+            try {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } catch (_: Exception) {
+                @Suppress("DEPRECATION")
+                stopForeground(true)
+            }
+        }
         serviceScope.cancel()
         super.onDestroy()
     }
@@ -198,7 +262,7 @@ class DownloadService : Service() {
                 NotificationManager.IMPORTANCE_MIN
             )
             notificationManager.createNotificationChannel(channel)
-            Log.d(TAG, "Notification channel created")
+            Logger.d(TAG, "Notification channel created")
         }
     }
 
@@ -217,28 +281,28 @@ class DownloadService : Service() {
             .build()
     }
 
-    private var isForegroundStarted = false
-    private var foregroundDownloadId: String? = null
+     private var isForegroundStarted = false
+     private var foregroundDownloadId: String? = null
 
-    private fun startDownload(downloadId: String) {
-        Log.d(TAG, "=== startDownload called with ID: $downloadId ===")
+     private fun startDownload(downloadId: String) {
+        Logger.d(TAG, "=== startDownload called with ID: $downloadId ===")
         activeDownloads[downloadId]?.cancel()
         val job = serviceScope.launch {
             try {
                 val canStart = downloadQueueManager.tryStartDownload(downloadId)
                 if (!canStart) {
-                    Log.d(TAG, "Download $downloadId queued - parallel limit reached")
+                    Logger.d(TAG, "Download $downloadId queued - parallel limit reached")
                     activeDownloads.remove(downloadId)
                     checkAndStopService()
                     return@launch
                 }
                 val downloadEntity = downloadDao.getDownloadById(downloadId)
                 if (downloadEntity == null) {
-                    Log.e(TAG, "Download not found: $downloadId")
+                    Logger.e(TAG, "Download not found: $downloadId")
                     delay(100)
                     val retryEntity = downloadDao.getDownloadById(downloadId)
                     if (retryEntity == null) {
-                        Log.e(TAG, "Download still not found after retry: $downloadId")
+                        Logger.e(TAG, "Download still not found after retry: $downloadId")
                         downloadQueueManager.onDownloadComplete(downloadId)
                         activeDownloads.remove(downloadId)
                         checkAndStopService()
@@ -249,28 +313,35 @@ class DownloadService : Service() {
                 if (!isForegroundStarted) {
                     try {
                         createNotificationChannel()
-                        val notificationId = notificationHelper.getNotificationIdForDownload(downloadId)
-                        val notification = notificationHelper.createProgressNotificationForForeground(
-                            downloadId,
-                            downloadItem.fileName,
-                            0,
-                            downloadItem.totalSize,
-                            0,
-                            DownloadStatus.DOWNLOADING
-                        )
-                        startForeground(notificationId, notification)
+                        // IMPORTANT: the foreground-service anchor notification must use its own
+                        // fixed, dedicated ID (FOREGROUND_NOTIFICATION_ID) - never a per-download
+                        // notification ID. Per-download progress/completed/failed notifications are
+                        // posted separately (see DownloadNotificationHelper, keyed by
+                        // getNotificationIdForDownload) via plain notify() as progress flows in below.
+                        // Reusing the same ID for both used to mean stopForeground(REMOVE) in
+                        // checkAndStopService() would delete the just-shown "Download Complete"
+                        // notification the instant the last active download finished.
+                        val notification = createForegroundNotification()
+                        startForeground(FOREGROUND_NOTIFICATION_ID, notification)
                         foregroundDownloadId = downloadId
                         isForegroundStarted = true
-                        Log.d(TAG, "Service started in foreground")
+                        Logger.d(TAG, "Service started in foreground")
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error starting foreground", e)
+                        Logger.e(TAG, "Error starting foreground", e)
                     }
                 }
                 downloadManager.downloadFile(downloadItem)
                     .catch { e ->
-                        Log.e(TAG, "Download error", e)
+                        Logger.e(TAG, "Download error", e)
                         downloadDao.updateStatus(downloadId, DownloadStatus.FAILED.name, System.currentTimeMillis())
-                        notificationHelper.showFailedNotification(downloadId, downloadItem.fileName, e.message)
+
+                        notificationHelper.showFailedNotification(
+                            downloadId, 
+                            downloadItem.fileName, 
+                            e.message,
+                            vibrateEnabled,
+                            lightEnabled
+                        )
                     }
                     .collect { progress ->
                         downloadDao.updateProgress(
@@ -293,7 +364,7 @@ class DownloadService : Service() {
                         }
                         when (progress.status) {
                             DownloadStatus.DOWNLOADING -> {
-                                Log.d(TAG, "STATUS: DOWNLOADING - $percentage%")
+                                Logger.d(TAG, "STATUS: DOWNLOADING - $percentage%")
                                 // Don't show progress notification when nearly complete (95%+)
                                 // This prevents showing 95-99% that doesn't reflect completion state
                                 if (percentage < 95) {
@@ -306,52 +377,50 @@ class DownloadService : Service() {
                                         DownloadStatus.DOWNLOADING
                                     )
                                 } else {
-                                    Log.d(TAG, "Download at $percentage% - not updating notification (close to completion)")
+                                    Logger.d(TAG, "Download at $percentage% - not updating notification (close to completion)")
                                 }
                             }
                             DownloadStatus.COMPLETED -> {
-                                Log.d(TAG, "=== DOWNLOAD COMPLETED: $downloadId ===")
-                                Log.d(TAG, "notifyCompletionEnabled: $notifyCompletionEnabled")
+                                Logger.d(TAG, "=== DOWNLOAD COMPLETED: $downloadId ===")
+                                Logger.d(TAG, "notifyCompletionEnabled: $notifyCompletionEnabled")
                                 
                                 // Small delay to ensure settings are fully propagated
                                 delay(100)
 
                                 if (notifyCompletionEnabled) {
-                                    Log.d(TAG, "ACTION: Showing COMPLETION notification")
+                                    Logger.d(TAG, "ACTION: Showing COMPLETION notification")
+
+
                                     // Show completion notification to replace progress notification
                                     notificationHelper.showCompletedNotification(
                                         downloadId,
                                         downloadItem.fileName,
-                                        downloadItem.filePath
+                                        downloadItem.filePath,
+                                        vibrateEnabled,
+                                        lightEnabled
                                     )
                                 } else {
-                                    Log.d(TAG, "ACTION: Toggle OFF - Removing notification completely from panel")
+                                    Logger.d(TAG, "ACTION: Toggle OFF - Removing notification completely from panel")
                                     try {
                                         val notificationId = notificationHelper.getNotificationIdForDownload(downloadId)
-                                        Log.d(TAG, "Cancelling notification ID: $notificationId")
-
-                                        // Remove foreground notification completely
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                                            stopForeground(STOP_FOREGROUND_REMOVE)
-                                        } else {
-                                            @Suppress("DEPRECATION")
-                                            stopForeground(true) // true = remove notification
-                                        }
-
-                                        // Also cancel any lingering notification
+                                        Logger.d(TAG, "Cancelling notification ID: $notificationId")
+                                        // NOTE: do not call stopForeground() here - other downloads may
+                                        // still be active. checkAndStopService() in the finally block
+                                        // below is the single source of truth for whether the service
+                                        // should leave the foreground state.
                                         notificationManager.cancel(notificationId)
-                                        Log.d(TAG, "Notification removed from panel successfully")
+                                        Logger.d(TAG, "Notification removed from panel successfully")
                                     } catch (e: Exception) {
-                                        Log.e(TAG, "ERROR removing notification: ${e.message}", e)
+                                        Logger.e(TAG, "ERROR removing notification: ${e.message}", e)
                                     }
                                 }
                                 downloadQueueManager.onDownloadComplete(downloadId)
                                 activeDownloads.remove(downloadId)
-                                Log.d(TAG, "Download marked complete and removed from active set")
+                                Logger.d(TAG, "Download marked complete and removed from active set")
                             }
                             DownloadStatus.FAILED -> {
-                                Log.d(TAG, "=== DOWNLOAD FAILED: $downloadId ===")
-                                Log.d(TAG, "notifyFailureEnabled: $notifyFailureEnabled")
+                                Logger.d(TAG, "=== DOWNLOAD FAILED: $downloadId ===")
+                                Logger.d(TAG, "notifyFailureEnabled: $notifyFailureEnabled")
 
                                 // Small delay to ensure settings are fully propagated
                                 delay(100)
@@ -360,7 +429,9 @@ class DownloadService : Service() {
                                     notificationHelper.showFailedNotification(
                                         downloadId,
                                         downloadItem.fileName,
-                                        progress.error
+                                        progress.error,
+                                        vibrateEnabled,
+                                        lightEnabled
                                     )
                                 }
                                 downloadQueueManager.onDownloadComplete(downloadId)
@@ -370,7 +441,7 @@ class DownloadService : Service() {
                         }
                     }
             } catch (e: Exception) {
-                Log.e(TAG, "Download exception", e)
+                Logger.e(TAG, "Download exception", e)
                 downloadDao.updateStatus(downloadId, DownloadStatus.FAILED.name, System.currentTimeMillis())
                 downloadQueueManager.onDownloadComplete(downloadId)
                 activeDownloads.remove(downloadId)
@@ -382,7 +453,7 @@ class DownloadService : Service() {
     }
 
     private fun pauseDownload(downloadId: String) {
-        Log.d(TAG, "=== PAUSE DOWNLOAD CALLED ===")
+        Logger.d(TAG, "=== PAUSE DOWNLOAD CALLED ===")
         activeDownloads[downloadId]?.cancel()
         activeDownloads.remove(downloadId)
         serviceScope.launch {
@@ -407,27 +478,31 @@ class DownloadService : Service() {
                     )
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error updating pause status", e)
+                Logger.e(TAG, "Error updating pause status", e)
             }
             checkAndStopService()
         }
     }
 
     private fun cancelDownload(downloadId: String) {
+        Logger.d(TAG, "=== CANCEL DOWNLOAD CALLED: $downloadId ===")
         activeDownloads[downloadId]?.cancel()
         activeDownloads.remove(downloadId)
         serviceScope.launch {
-            downloadDao.updateStatus(downloadId, DownloadStatus.FAILED.name, System.currentTimeMillis())
+            // Update database status to CANCELLED
+            downloadDao.updateStatus(downloadId, DownloadStatus.CANCELLED.name, System.currentTimeMillis())
             downloadQueueManager.onDownloadComplete(downloadId)
+            
+            // Remove notification
+            notificationManager.cancel(notificationHelper.getNotificationIdForDownload(downloadId))
+            checkAndStopService()
         }
-        notificationManager.cancel(downloadId.hashCode())
-        checkAndStopService()
     }
 
     private fun resumeAllPendingDownloads() {
         serviceScope.launch {
             try {
-                Log.d(TAG, "Waiting 2 seconds for network to stabilize...")
+                Logger.d(TAG, "Waiting 2 seconds for network to stabilize...")
                 delay(2000)
                 val pendingDownloads = downloadDao.getDownloadsByStatuses(
                     listOf(
@@ -436,37 +511,45 @@ class DownloadService : Service() {
                         DownloadStatus.FAILED.name
                     )
                 )
-                Log.d(TAG, "Found ${pendingDownloads.size} pending downloads")
+                Logger.d(TAG, "Found ${pendingDownloads.size} pending downloads")
                 if (pendingDownloads.isEmpty()) {
-                    Log.d(TAG, "No downloads to resume")
+                    Logger.d(TAG, "No downloads to resume")
                     checkAndStopService()
                     return@launch
                 }
+
+                if (!isForegroundStarted) {
+                    try {
+                        createNotificationChannel()
+                        startForeground(FOREGROUND_NOTIFICATION_ID, createForegroundNotification())
+                        isForegroundStarted = true
+                    } catch (e: Exception) {
+                        Logger.e(TAG, "Error starting foreground for pending downloads", e)
+                    }
+                }
+
                 pendingDownloads.forEach { download ->
-                    Log.d(TAG, "Retrying: ${download.id}")
+                    Logger.d(TAG, "Retrying: ${download.id}")
                     downloadDao.updateStatus(download.id, DownloadStatus.QUEUED.name, System.currentTimeMillis())
                     startDownload(download.id)
                     delay(500)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error in resumeAllPendingDownloads", e)
+                Logger.e(TAG, "Error in resumeAllPendingDownloads", e)
             }
         }
     }
 
     private fun checkAndStopService() {
         if (activeDownloads.isEmpty()) {
-            Log.d(TAG, "No active downloads, stopping service")
+            Logger.d(TAG, "No active downloads, stopping service")
             isForegroundStarted = false
             foregroundDownloadId = null
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                stopForeground(STOP_FOREGROUND_DETACH)
-            } else {
-                @Suppress("DEPRECATION")
-                stopForeground(false)
-            }
+            NotificationManagerCompat.from(this).cancel(FOREGROUND_NOTIFICATION_ID)
+            stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
     }
 }
+
 

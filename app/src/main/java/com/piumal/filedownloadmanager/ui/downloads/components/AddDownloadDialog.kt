@@ -23,6 +23,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.piumal.filedownloadmanager.R
 
 import com.piumal.filedownloadmanager.domain.model.DownloadConfig
+import com.piumal.filedownloadmanager.domain.util.DownloadStoragePaths
 import com.piumal.filedownloadmanager.ui.downloads.viewmodel.AddDownloadViewModel
 
 
@@ -62,14 +63,14 @@ fun AddDownloadDialog(
                 val split = docId.split(":")
                 if (split.size >= 2) {
                     if (split[0] == "primary") {
-                        "${'$'}{android.os.Environment.getExternalStorageDirectory().absolutePath}/${'$'}{split[1]}"
+                        "${android.os.Environment.getExternalStorageDirectory().absolutePath}/${split[1]}"
                     } else {
-                        "/storage/${'$'}{split[0]}/${'$'}{split[1]}"
+                        "/storage/${split[0]}/${split[1]}"
                     }
                 } else {
-                    uri.path ?: "Download/FileDownloadManager"
+                    uri.path ?: DownloadStoragePaths.DEFAULT_UI_FOLDER_LABEL
                 }
-            }.getOrDefault("Download/FileDownloadManager")
+            }.getOrDefault(DownloadStoragePaths.DEFAULT_UI_FOLDER_LABEL)
 
             viewModel.onFilePathChanged(folderPath)
 
@@ -219,7 +220,7 @@ fun AddDownloadDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "📅 ${'$'}{formatDateTime(uiState.scheduleTime!!)}",
+                            text = "\uD83D\uDCC5 ${formatDateTime(uiState.scheduleTime!!)}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.weight(1f)
@@ -314,4 +315,3 @@ fun AddDownloadDialog(
         )
     }
 }
-

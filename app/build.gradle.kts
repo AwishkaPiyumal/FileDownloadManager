@@ -1,28 +1,50 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("kotlin-kapt")
     id("com.google.dagger.hilt.android")
+    id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
 }
+
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use { load(it) }
+    }
+}
+
+fun String.asBuildConfigLiteral(): String = replace("\\", "\\\\").replace("\"", "\\\"")
+
+fun localProperty(name: String): String = localProperties.getProperty(name, "")
 
 android {
     namespace = "com.piumal.filedownloadmanager"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.piumal.filedownloadmanager"
         minSdk = 24
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 36
+        versionCode =5
+        versionName = "1.2.0"
+
+        buildConfigField("String", "API_BASE_URL", "\"${localProperty("API_BASE_URL").asBuildConfigLiteral()}\"")
+        buildConfigField("String", "API_KEY", "\"${localProperty("API_KEY").asBuildConfigLiteral()}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -38,6 +60,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -51,6 +74,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     testImplementation(libs.junit)
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("org.mockito:mockito-core:5.7.0")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
@@ -68,6 +93,8 @@ dependencies {
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     kapt("androidx.room:room-compiler:2.6.1")
+    implementation("net.zetetic:sqlcipher-android:4.6.1")
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     // Retrofit - Network
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
@@ -88,4 +115,9 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+
+    implementation("com.github.naman14:TAndroidLame:1.1") {
+        exclude(group = "com.android.support", module = "appcompat-v7")
+        exclude(group = "com.android.support", module = "support-v4")
+    }
 }

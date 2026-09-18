@@ -9,7 +9,7 @@ import android.net.NetworkRequest
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
+import com.piumal.filedownloadmanager.util.Logger
 import com.piumal.filedownloadmanager.data.download.DownloadService
 import dagger.hilt.android.HiltAndroidApp
 
@@ -28,7 +28,16 @@ class FileDownloadApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "Application onCreate() - Hilt initialized")
+        try {
+            System.loadLibrary("sqlcipher")
+        } catch (e: UnsatisfiedLinkError) {
+            // Don't let a missing/incompatible native lib for this device's ABI take down the
+            // whole app before anything else has a chance to run. The Room/SQLCipher database
+            // will fail when it's actually opened (see AppModule.provideDownloadDatabase), which
+            // surfaces as a narrower, more diagnosable failure than a startup crash here.
+            Logger.e(TAG, "Failed to load sqlcipher native library", e)
+        }
+        Logger.d(TAG, "Application onCreate() - Hilt initialized")
 
         connectivityManager = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
         registerNetworkCallback()
@@ -37,11 +46,11 @@ class FileDownloadApplication : Application() {
     private fun registerNetworkCallback() {
         networkCallback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
-                Log.d(TAG, "=== Network AVAILABLE: $network ===")
-                Log.d(TAG, "isNetworkLost was: $isNetworkLost")
+                Logger.d(TAG, "=== Network AVAILABLE: $network ===")
+                Logger.d(TAG, "isNetworkLost was: $isNetworkLost")
 
                 if (isNetworkLost) {
-                    Log.d(TAG, "Network was lost before - scheduling download retry")
+                    Logger.d(TAG, "Network was lost before - scheduling download retry")
                     isNetworkLost = false
 
                     // Use handler to add delay before retrying
@@ -52,7 +61,7 @@ class FileDownloadApplication : Application() {
             }
 
             override fun onLost(network: Network) {
-                Log.d(TAG, "=== Network LOST: $network ===")
+                Logger.d(TAG, "=== Network LOST: $network ===")
 
                 // Check if there's still an active network
                 val activeNetwork = connectivityManager.activeNetwork
@@ -64,15 +73,15 @@ class FileDownloadApplication : Application() {
                         capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
 
                 if (!stillConnected) {
-                    Log.d(TAG, "No active network - marking as lost")
+                    Logger.d(TAG, "No active network - marking as lost")
                     isNetworkLost = true
                 } else {
-                    Log.d(TAG, "Still have active network connection")
+                    Logger.d(TAG, "Still have active network connection")
                 }
             }
 
             override fun onUnavailable() {
-                Log.d(TAG, "=== Network UNAVAILABLE ===")
+                Logger.d(TAG, "=== Network UNAVAILABLE ===")
                 isNetworkLost = true
             }
         }
@@ -84,7 +93,7 @@ class FileDownloadApplication : Application() {
 
         try {
             connectivityManager.registerNetworkCallback(networkRequest, networkCallback!!)
-            Log.d(TAG, "Network callback registered successfully")
+            Logger.d(TAG, "Network callback registered successfully")
 
             // Check initial network state
             val activeNetwork = connectivityManager.activeNetwork
@@ -95,14 +104,14 @@ class FileDownloadApplication : Application() {
             isNetworkLost = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) != true ||
                     capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) != true
 
-            Log.d(TAG, "Initial network state - isNetworkLost: $isNetworkLost")
+            Logger.d(TAG, "Initial network state - isNetworkLost: $isNetworkLost")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to register network callback", e)
+            Logger.e(TAG, "Failed to register network callback", e)
         }
     }
 
     private fun resumeFailedDownloads() {
-        Log.d(TAG, "=== Resuming failed downloads ===")
+        Logger.d(TAG, "=== Resuming failed downloads ===")
         try {
             val intent = Intent(this, DownloadService::class.java).apply {
                 action = DownloadService.ACTION_RESUME_ALL_PENDING
@@ -112,9 +121,9 @@ class FileDownloadApplication : Application() {
             } else {
                 startService(intent)
             }
-            Log.d(TAG, "Successfully triggered resume all pending downloads")
+            Logger.d(TAG, "Successfully triggered resume all pending downloads")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to start download service for retry", e)
+            Logger.e(TAG, "Failed to start download service for retry", e)
         }
     }
 
@@ -123,9 +132,9 @@ class FileDownloadApplication : Application() {
         networkCallback?.let {
             try {
                 connectivityManager.unregisterNetworkCallback(it)
-                Log.d(TAG, "Network callback unregistered")
+                Logger.d(TAG, "Network callback unregistered")
             } catch (e: Exception) {
-                Log.e(TAG, "Error unregistering network callback", e)
+                Logger.e(TAG, "Error unregistering network callback", e)
             }
         }
     }

@@ -109,7 +109,7 @@ fun SettingItemWithSwitchPreview() {
 fun SettingItemWithChevronPreview() {
     FileDownloadManagerTheme {
         SettingItem(
-            title = "Advanced Settings",
+            title = "More Settings",
             hasChevron = true,
             onClick = {}
         )

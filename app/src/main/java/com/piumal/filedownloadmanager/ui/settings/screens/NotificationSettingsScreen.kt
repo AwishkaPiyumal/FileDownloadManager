@@ -4,6 +4,7 @@ import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -31,36 +32,22 @@ fun NotificationSettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    NotificationSettingsContent(
+    NotificationSettingsStandaloneContent(
         uiState = uiState,
-        onToggleNotifications = viewModel::toggleNotifications,
-        onToggleNotifyCompletion = viewModel::toggleNotifyDownloadCompletion,
-        onToggleNotifyFailure = viewModel::toggleNotifyDownloadFailure,
-        onShowCompletionRingtone = { /* TODO: open ringtone picker */ },
-        onShowFailureRingtone = { /* TODO: open ringtone picker */ },
-        onToggleVibrate = viewModel::toggleVibrate,
-        onToggleLight = viewModel::toggleLight
+        viewModel = viewModel
     )
 }
 
 @Composable
 fun NotificationSettingsContent(
     uiState: SettingsUiState,
-    onToggleNotifications: () -> Unit,
     onToggleNotifyCompletion: () -> Unit,
     onToggleNotifyFailure: () -> Unit,
-    onShowCompletionRingtone: () -> Unit,
-    onShowFailureRingtone: () -> Unit,
     onToggleVibrate: () -> Unit,
     onToggleLight: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState())
-    ) {
+    Column(modifier = modifier.fillMaxWidth()) {
         // Master toggle
         SettingItem(
             title = "Notify download completion",
@@ -79,22 +66,6 @@ fun NotificationSettingsContent(
         SettingsDivider()
 
         SettingItem(
-            title = "Download completion ringtone",
-            subtitle = uiState.completionRingtone,
-            hasChevron = true,
-            onClick = onShowCompletionRingtone
-        )
-        SettingsDivider()
-
-        SettingItem(
-            title = "Download failure ringtone",
-            subtitle = uiState.failureRingtone,
-            hasChevron = true,
-            onClick = onShowFailureRingtone
-        )
-        SettingsDivider()
-
-        SettingItem(
             title = "Vibrate",
             hasSwitch = true,
             isEnabled = uiState.vibrateEnabled,
@@ -103,10 +74,31 @@ fun NotificationSettingsContent(
         SettingsDivider()
 
         SettingItem(
-            title = "Light",
+            title = "Flash Light",
             hasSwitch = true,
             isEnabled = uiState.lightEnabled,
             onToggle = onToggleLight
+        )
+    }
+}
+
+@Composable
+private fun NotificationSettingsStandaloneContent(
+    uiState: SettingsUiState,
+    viewModel: SettingsViewModel,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
+    ) {
+        NotificationSettingsContent(
+            uiState = uiState,
+            onToggleNotifyCompletion = viewModel::toggleNotifyDownloadCompletion,
+            onToggleNotifyFailure = viewModel::toggleNotifyDownloadFailure,
+            onToggleVibrate = viewModel::toggleVibrate,
+            onToggleLight = viewModel::toggleLight
         )
     }
 }
@@ -117,11 +109,8 @@ fun NotificationSettingsScreenPreview() {
     FileDownloadManagerTheme {
         NotificationSettingsContent(
             uiState = SettingsUiState(),
-            onToggleNotifications = {},
             onToggleNotifyCompletion = {},
             onToggleNotifyFailure = {},
-            onShowCompletionRingtone = {},
-            onShowFailureRingtone = {},
             onToggleVibrate = {},
             onToggleLight = {}
         )
@@ -134,11 +123,8 @@ fun NotificationSettingsScreenDarkPreview() {
     FileDownloadManagerTheme {
         NotificationSettingsContent(
             uiState = SettingsUiState(darkMode = true),
-            onToggleNotifications = {},
             onToggleNotifyCompletion = {},
             onToggleNotifyFailure = {},
-            onShowCompletionRingtone = {},
-            onShowFailureRingtone = {},
             onToggleVibrate = {},
             onToggleLight = {}
         )

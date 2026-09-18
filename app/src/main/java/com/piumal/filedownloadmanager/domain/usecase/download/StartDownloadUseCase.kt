@@ -1,10 +1,11 @@
 package com.piumal.filedownloadmanager.domain.usecase.download
 
-import android.util.Log
 import com.piumal.filedownloadmanager.domain.model.DownloadItem
 import com.piumal.filedownloadmanager.domain.model.DownloadStatus
 import com.piumal.filedownloadmanager.domain.repository.DownloadRepository
 import com.piumal.filedownloadmanager.domain.util.ContentValidator
+import com.piumal.filedownloadmanager.domain.util.DownloadStoragePaths
+import com.piumal.filedownloadmanager.domain.util.FileNameSanitizer
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.first
@@ -52,34 +53,32 @@ class StartDownloadUseCase @Inject constructor(
     operator fun invoke(
         url: String,
         fileName: String?,
+        @Suppress("UNUSED_PARAMETER")
         destinationPath: String,
         scheduleTime: Long? = null,
         forceNewDownload: Boolean = false
     ): Flow<Result<DownloadItem>> = flow {
         try {
-            Log.d("StartDownloadUseCase", "=== Starting download process ===")
-            Log.d("StartDownloadUseCase", "URL: $url")
-            Log.d("StartDownloadUseCase", "FileName: $fileName")
-            Log.d("StartDownloadUseCase", "DestinationPath: $destinationPath")
-            Log.d("StartDownloadUseCase", "ForceNewDownload: $forceNewDownload")
+            if (!ContentValidator.isHttpOrHttps(url)) {
+                emit(Result.failure(IllegalArgumentException("Only HTTP and HTTPS URLs are supported")))
+                return@flow
+            }
 
             // Step 1: Validate URL for Google Policy compliance
             val urlValidation = ContentValidator.validateDownloadUrl(url)
-            Log.d("StartDownloadUseCase", "URL Validation: ${urlValidation.isValid} - ${urlValidation.message}")
             if (!urlValidation.isValid) {
                 emit(Result.failure(IllegalArgumentException(urlValidation.message)))
                 return@flow
             }
 
             // Step 2: Extract or use provided file name
-            val actualFileName = fileName?.takeIf { it.isNotBlank() }
-                ?: ContentValidator.extractFileName(url)
+            val actualFileName = FileNameSanitizer.sanitize(
+                fileName?.takeIf { it.isNotBlank() } ?: ContentValidator.extractFileName(url)
                 ?: "download_${System.currentTimeMillis()}"
-            Log.d("StartDownloadUseCase", "Actual file name: $actualFileName")
+            )
 
             // Step 3: Validate file name
             val fileNameValidation = ContentValidator.validateFileName(actualFileName)
-            Log.d("StartDownloadUseCase", "File name validation: ${fileNameValidation.isValid}")
             if (!fileNameValidation.isValid) {
                 emit(Result.failure(IllegalArgumentException(fileNameValidation.message)))
                 return@flow
@@ -93,19 +92,17 @@ class StartDownloadUseCase @Inject constructor(
 
             // Step 4.5: Check if download already exists with same URL and file name
             // If exists and not completed, resume it instead of creating new one
-            Log.d("StartDownloadUseCase", "Checking for existing downloads...")
             val existingDownloads = repository.getAllDownloads().first()
-            Log.d("StartDownloadUseCase", "Found ${existingDownloads.size} existing downloads")
+            val storageDirectory = DownloadStoragePaths.getDownloadDirectory()
+            val finalDestinationPath = storageDirectory.absolutePath
 
             // Determine the final file name (with auto-rename if needed)
             val finalFileName = if (forceNewDownload) {
                 // User chose to continue with duplicate - generate unique name
-                generateUniqueFileName(actualFileName, destinationPath, existingDownloads)
+                generateUniqueFileName(actualFileName, storageDirectory, existingDownloads)
             } else {
                 actualFileName
             }
-
-            Log.d("StartDownloadUseCase", "Final file name: $finalFileName")
 
             // Check if file already downloaded and exists in database (only if not forcing new download)
             if (!forceNewDownload) {
@@ -116,7 +113,6 @@ class StartDownloadUseCase @Inject constructor(
 
                 if (existingCompletedDownload != null) {
                     // File already exists, need user confirmation
-                    Log.d("StartDownloadUseCase", "File already exists: $finalFileName")
                     emit(Result.failure(FileAlreadyExistsException(finalFileName)))
                     return@flow
                 }
@@ -132,7 +128,6 @@ class StartDownloadUseCase @Inject constructor(
 
                 if (existingActiveDownload != null) {
                     // Resume existing download instead of creating new one
-                    Log.d("StartDownloadUseCase", "Found existing download, resuming: ${existingActiveDownload.id}")
                     repository.resumeDownload(existingActiveDownload.id)
                     emit(Result.success(existingActiveDownload))
                     return@flow
@@ -154,39 +149,29 @@ class StartDownloadUseCase @Inject constructor(
                 totalSize = 0L, // Will be updated when download starts
                 status = downloadStatus,
                 url = url,
-                filePath = "$destinationPath/$finalFileName",
+                filePath = "$finalDestinationPath/$finalFileName",
                 createdAt = System.currentTimeMillis(),
                 scheduleTime = scheduleTime  // Store scheduled time
             )
 
-            Log.d("StartDownloadUseCase", "Created download item: ID=${downloadItem.id}, Status=${downloadItem.status}")
-
             // Step 6: Save to repository
-            Log.d("StartDownloadUseCase", "Inserting download into database...")
             repository.insertDownload(downloadItem)
-            Log.d("StartDownloadUseCase", "Download inserted successfully")
 
             // Step 7: Start the download (immediate or scheduled)
             if (scheduleTime != null) {
-                Log.d("StartDownloadUseCase", "Scheduling download for later")
                 // Schedule the download using ScheduledDownloadManager
                 repository.scheduleDownload(downloadItem, scheduleTime)
                 scheduledDownloadManager.scheduleDownload(downloadItem, scheduleTime)
             } else {
                 // Start immediately via repository (which handles the service internally)
                 // This allows download to continue even if app is closed
-                Log.d("StartDownloadUseCase", "Starting download immediately with ID: ${downloadItem.id}")
                 repository.startDownload(downloadItem)
-                Log.d("StartDownloadUseCase", "Download started via repository")
             }
 
             // Step 8: Emit success
-            Log.d("StartDownloadUseCase", "Emitting success result")
             emit(Result.success(downloadItem))
-            Log.d("StartDownloadUseCase", "=== Download process completed successfully ===")
 
         } catch (e: Exception) {
-            Log.e("StartDownloadUseCase", "Error starting download", e)
             emit(Result.failure(e))
         }
     }
@@ -205,7 +190,7 @@ class StartDownloadUseCase @Inject constructor(
      */
     private suspend fun generateUniqueFileName(
         baseName: String,
-        destinationPath: String,
+        storageDirectory: File,
         existingDownloads: List<DownloadItem>
     ): String {
         val file = File(baseName)
@@ -217,7 +202,7 @@ class StartDownloadUseCase @Inject constructor(
 
         // Check both file system and database
         while (existingDownloads.any { it.fileName == newFileName } ||
-               File(destinationPath, newFileName).exists()) {
+               File(storageDirectory, newFileName).exists()) {
             newFileName = if (extension.isNotEmpty()) {
                 "$nameWithoutExt($counter).$extension"
             } else {

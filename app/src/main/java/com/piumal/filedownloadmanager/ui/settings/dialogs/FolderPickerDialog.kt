@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.piumal.filedownloadmanager.domain.util.DownloadStoragePaths
 import androidx.compose.ui.window.Dialog
 import com.piumal.filedownloadmanager.R
 import com.piumal.filedownloadmanager.ui.theme.FileDownloadManagerTheme
@@ -146,7 +147,7 @@ fun FolderPickerDialog(
 fun FolderPickerDialogPreview() {
     FileDownloadManagerTheme {
         FolderPickerDialog(
-            currentFolder = "Download/FileDownloadManager",
+            currentFolder = DownloadStoragePaths.DEFAULT_UI_FOLDER_LABEL,
             onDismiss = {},
             onConfirm = {},
             onBrowse = {}
@@ -159,7 +160,7 @@ fun FolderPickerDialogPreview() {
 fun FolderPickerDialogDarkPreview() {
     FileDownloadManagerTheme {
         FolderPickerDialog(
-            currentFolder = "Download/FileDownloadManager",
+            currentFolder = DownloadStoragePaths.DEFAULT_UI_FOLDER_LABEL,
             onDismiss = {},
             onConfirm = {},
             onBrowse = {}

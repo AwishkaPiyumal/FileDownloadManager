@@ -36,8 +36,8 @@ fun CollapsibleSection(
     title: String,
     isExpanded: Boolean,
     onToggle: () -> Unit,
-    isCollapsible: Boolean = true,
     modifier: Modifier = Modifier,
+    isCollapsible: Boolean = true,
     content: @Composable () -> Unit
 ) {
     Column(modifier = modifier.fillMaxWidth()) {

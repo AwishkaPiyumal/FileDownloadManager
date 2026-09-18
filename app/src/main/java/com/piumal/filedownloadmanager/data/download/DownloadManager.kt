@@ -1,17 +1,25 @@
+@file:Suppress("unused")
+
 package com.piumal.filedownloadmanager.data.download
 
 import android.content.Context
-import android.os.Environment
-import android.util.Log
+import android.os.StatFs
 import com.piumal.filedownloadmanager.domain.model.DownloadItem
 import com.piumal.filedownloadmanager.domain.model.DownloadStatus
 import com.piumal.filedownloadmanager.domain.util.ContentValidator
+import com.piumal.filedownloadmanager.domain.util.DownloadStoragePaths
+import com.piumal.filedownloadmanager.domain.util.FileNameSanitizer
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -19,32 +27,26 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Download Manager Implementation
- *
- * Handles actual file downloads using OkHttp
- * Google Policy Compliant:
- * - Validates content before download
- * - Respects file size limits
- * - Provides download progress
- * - Handles errors gracefully
- *
- * @param context Application context
- */
+import com.piumal.filedownloadmanager.storage.StorageManager
+import com.piumal.filedownloadmanager.storage.StorageManagerImpl
+import dagger.hilt.android.qualifiers.ApplicationContext
+
+// ... imports
+
 @Singleton
 class DownloadManager @Inject constructor(
-    private val context: Context
+    @ApplicationContext private val context: Context,
+    private val storageManager: StorageManager
 ) {
+// ...
 
-    private val okHttpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
-        .build()
+    private companion object {
+        private const val BUFFER_SIZE_BYTES = 64 * 1024
+        private const val STORAGE_SAFETY_MARGIN_BYTES = 32L * 1024 * 1024
+    }
 
-    /**
-     * Download state to track progress
-     */
+    private val okHttpClient = createSecureDownloadHttpClient()
+
     data class DownloadProgress(
         val downloadedBytes: Long,
         val totalBytes: Long,
@@ -52,278 +54,287 @@ class DownloadManager @Inject constructor(
         val error: String? = null
     )
 
-    /**
-     * Start download with progress updates
-     * Supports resumable downloads using HTTP Range header
-     *
-     * @param downloadItem Download item to download
-     * @return Flow of download progress
-     */
     fun downloadFile(downloadItem: DownloadItem): Flow<DownloadProgress> = flow {
+        val safeFileName = FileNameSanitizer.sanitize(downloadItem.fileName)
         try {
-            Log.d("DownloadManager", "=== Starting download ===")
-            Log.d("DownloadManager", "URL: ${downloadItem.url}")
-            Log.d("DownloadManager", "FileName: ${downloadItem.fileName}")
-
-            // Validate URL again before download
+            if (!ContentValidator.isSecureConnection(downloadItem.url)) {
+                emit(DownloadProgress(0, 0, DownloadStatus.FAILED, "Only HTTPS URLs are supported"))
+                return@flow
+            }
             val validation = ContentValidator.validateDownloadUrl(downloadItem.url)
-            Log.d("DownloadManager", "URL validation: ${validation.isValid} - ${validation.message}")
             if (!validation.isValid) {
-                emit(DownloadProgress(
-                    downloadedBytes = 0,
-                    totalBytes = 0,
-                    status = DownloadStatus.FAILED,
-                    error = validation.message
-                ))
+                emit(DownloadProgress(0, 0, DownloadStatus.FAILED, validation.message))
                 return@flow
             }
 
-            // Create download directory
-            val downloadDir = getDownloadDirectory()
-            Log.d("DownloadManager", "Download directory: ${downloadDir.absolutePath}")
-            if (!downloadDir.exists()) {
-                val created = downloadDir.mkdirs()
-                Log.d("DownloadManager", "Directory created: $created")
-                if (!created) {
-                    emit(DownloadProgress(
-                        downloadedBytes = 0,
-                        totalBytes = 0,
-                        status = DownloadStatus.FAILED,
-                        error = "Failed to create download directory"
-                    ))
+            val uriString = downloadItem.uri ?: downloadItem.filePath
+            val isSaf = uriString.startsWith("content://")
+
+            val file = if (!isSaf) File(uriString.ifBlank { DownloadStoragePaths.getDownloadFilePath(safeFileName) }) else null
+            
+            // Only perform directory checks and storage space checks for local files for now
+            var downloadDir: File? = null
+            if (!isSaf && file != null) {
+                downloadDir = file.parentFile ?: DownloadStoragePaths.getDownloadDirectory()
+                if (!downloadDir.exists() && !downloadDir.mkdirs()) {
+                    emit(DownloadProgress(0, 0, DownloadStatus.FAILED, "Failed to create download directory"))
                     return@flow
                 }
             }
 
-            // Create file
-            val file = File(downloadDir, downloadItem.fileName)
-            Log.d("DownloadManager", "Target file: ${file.absolutePath}")
+            var downloadedBytes = if (storageManager.exists(uriString)) storageManager.getLength(uriString) else 0L
 
-            // Check if file partially exists (for resume support)
-            val downloadedBytes = if (file.exists()) file.length() else 0L
-            Log.d("DownloadManager", "Already downloaded: $downloadedBytes bytes")
-
-            // Build request with Range header for resume support
             val requestBuilder = Request.Builder()
                 .url(downloadItem.url)
                 .addHeader("User-Agent", "FileDownloadManager/1.0")
 
-            // Add Range header if resuming
             if (downloadedBytes > 0) {
                 requestBuilder.addHeader("Range", "bytes=$downloadedBytes-")
-                Log.d("DownloadManager", "Resuming download from byte: $downloadedBytes")
             }
 
-            val request = requestBuilder.build()
+            val call = okHttpClient.newCall(requestBuilder.build())
+            
+            // Add cancellation support
+            val job = currentCoroutineContext()[Job]
+            job?.invokeOnCompletion { 
+                call.cancel()
+            }
+            
+            var response: Response = call.execute()
 
-            // Execute request
-            Log.d("DownloadManager", "Executing HTTP request...")
-            var response = okHttpClient.newCall(request).execute()
-            Log.d("DownloadManager", "Response code: ${response.code}")
-            Log.d("DownloadManager", "Response message: ${response.message}")
-
-            // Handle HTTP 416 (Range Not Satisfiable) - file may have changed on server
+            // Handle HTTP 416 (Range Not Satisfiable)
             if (response.code == 416) {
-                Log.w("DownloadManager", "HTTP 416 (Range Not Satisfiable) - Server file may have changed. Restarting download from beginning.")
-                // Delete the partial file and restart download from 0
-                if (file.exists()) {
-                    file.delete()
-                    Log.d("DownloadManager", "Partial file deleted, restarting download")
-                }
+                response.close()
+                storageManager.delete(uriString)
+                downloadedBytes = 0L
 
-                // Make a new request without Range header
-                val newRequest = Request.Builder()
+                val retryRequest = Request.Builder()
                     .url(downloadItem.url)
                     .addHeader("User-Agent", "FileDownloadManager/1.0")
                     .build()
 
-                response = okHttpClient.newCall(newRequest).execute()
-                Log.d("DownloadManager", "Retry response code: ${response.code}")
+                response = okHttpClient.newCall(retryRequest).execute()
+            }
 
-                if (!response.isSuccessful) {
-                    Log.e("DownloadManager", "Retry failed with HTTP error: ${response.code} - ${response.message}")
-                    emit(DownloadProgress(
-                        downloadedBytes = 0,
-                        totalBytes = 0,
-                        status = DownloadStatus.FAILED,
-                        error = "HTTP ${response.code}: ${response.message}"
-                    ))
+            response.use { resp ->
+                // Validate Content-Type
+                val contentType = resp.header("Content-Type")
+                val mimeTypeValidation = ContentValidator.validateMimeType(contentType, downloadItem.url)
+                if (!mimeTypeValidation.isValid) {
+                    resp.close()
+                    throw SecurityException(mimeTypeValidation.message)
+                }
+
+
+                if (!resp.isSuccessful && resp.code != 206) {
+                    emit(DownloadProgress(0, 0, DownloadStatus.FAILED, "HTTP ${resp.code}: ${resp.message}"))
                     return@flow
                 }
-            }
 
-            // Check response code (200 = new download, 206 = partial/resume)
-            if (!response.isSuccessful && response.code != 206) {
-                Log.e("DownloadManager", "HTTP error: ${response.code} - ${response.message}")
-                emit(DownloadProgress(
-                    downloadedBytes = 0,
-                    totalBytes = 0,
-                    status = DownloadStatus.FAILED,
-                    error = "HTTP ${response.code}: ${response.message}"
-                ))
-                return@flow
-            }
-
-            val body = response.body ?: run {
-                Log.e("DownloadManager", "Empty response body")
-                emit(DownloadProgress(
-                    downloadedBytes = 0,
-                    totalBytes = 0,
-                    status = DownloadStatus.FAILED,
-                    error = "Empty response body"
-                ))
-                return@flow
-            }
-
-            // Get content length
-            val contentLength = body.contentLength()
-            val totalBytes = if (response.code == 206) {
-                // Partial download, add already downloaded bytes
-                downloadedBytes + contentLength
-            } else {
-                // New download
-                if (file.exists()) file.delete() // Delete existing file
-                contentLength
-            }
-
-            Log.d("DownloadManager", "Content length: $contentLength")
-            Log.d("DownloadManager", "Total bytes: $totalBytes")
-
-            // Validate file size
-            if (totalBytes > 0) {
-                val sizeValidation = ContentValidator.validateFileSize(totalBytes)
-                Log.d("DownloadManager", "Size validation: ${sizeValidation.isValid} - ${sizeValidation.message}")
-                if (!sizeValidation.isValid) {
-                    emit(DownloadProgress(
-                        downloadedBytes = 0,
-                        totalBytes = totalBytes,
-                        status = DownloadStatus.FAILED,
-                        error = sizeValidation.message
-                    ))
+                val body = resp.body ?: run {
+                    emit(DownloadProgress(0, 0, DownloadStatus.FAILED, "Empty response body"))
                     return@flow
                 }
-            }
 
-            // Open streams (append if resuming)
-            Log.d("DownloadManager", "Opening file streams...")
-            val inputStream = body.byteStream()
-            val outputStream = FileOutputStream(file, response.code == 206) // Append if 206
+                val isPartial = resp.code == 206
+                val contentLength = body.contentLength()
 
-            val buffer = ByteArray(8192) // 8KB buffer
-            var currentDownloadedBytes = downloadedBytes
-            var bytesRead: Int
-
-            // Emit initial progress
-            Log.d("DownloadManager", "Starting download loop...")
-            emit(DownloadProgress(
-                downloadedBytes = currentDownloadedBytes,
-                totalBytes = totalBytes,
-                status = DownloadStatus.DOWNLOADING
-            ))
-
-            // Download loop
-            while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                outputStream.write(buffer, 0, bytesRead)
-                currentDownloadedBytes += bytesRead
-
-                // Emit progress every 100KB
-                if (currentDownloadedBytes % (100 * 1024) < 8192 || bytesRead == -1) {
-                    emit(DownloadProgress(
-                        downloadedBytes = currentDownloadedBytes,
-                        totalBytes = totalBytes,
-                        status = DownloadStatus.DOWNLOADING
-                    ))
+                // Reset downloaded byte offset if server ignored Range header and returned HTTP 200
+                if (!isPartial) {
+                    storageManager.delete(uriString)
+                    downloadedBytes = 0L
                 }
+
+                val totalBytes = if (isPartial && contentLength != -1L) {
+                    downloadedBytes + contentLength
+                } else if (contentLength > 0) {
+                    contentLength
+                } else {
+                    downloadItem.totalSize
+                }
+
+                val remainingBytes = when {
+                    totalBytes > 0 -> (totalBytes - downloadedBytes).coerceAtLeast(0L)
+                    contentLength > 0 -> contentLength
+                    else -> 0L
+                }
+
+                if (remainingBytes > 0 && downloadDir != null && !hasEnoughStorage(downloadDir, remainingBytes)) {
+                    emit(DownloadProgress(downloadedBytes, totalBytes, DownloadStatus.FAILED, "Insufficient storage space"))
+                    return@flow
+                }
+
+                if (totalBytes > 0) {
+                    val sizeValidation = ContentValidator.validateFileSize(totalBytes)
+                    if (!sizeValidation.isValid) {
+                        emit(DownloadProgress(0, totalBytes, DownloadStatus.FAILED, sizeValidation.message))
+                        return@flow
+                    }
+                }
+
+                var currentDownloadedBytes = downloadedBytes
+                emit(DownloadProgress(currentDownloadedBytes, totalBytes, DownloadStatus.DOWNLOADING))
+
+                val buffer = ByteArray(BUFFER_SIZE_BYTES)
+                var bytesRead: Int
+                var bytesSinceLastEmit = 0L
+                val emitThreshold = 100 * 1024 // 100 KB
+                var isFirstBuffer = true
+
+                body.byteStream().use { inputStream ->
+                    val uriString = downloadItem.uri ?: downloadItem.filePath
+                    val outputStream = storageManager.getOutputStream(uriString, isPartial) 
+                        ?: throw IOException("Failed to open output stream")
+                    
+                    outputStream.use { stream ->
+                        while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                            if (!currentCoroutineContext().isActive) break
+                            
+                            // Check for magic numbers in the very first chunk
+                            if (isFirstBuffer) {
+                                isFirstBuffer = false
+                                if (ContentValidator.isMaliciousSignature(buffer)) {
+                                    throw SecurityException("Malicious file signature detected.")
+                                }
+                            }
+
+                            stream.write(buffer, 0, bytesRead)
+                            currentDownloadedBytes += bytesRead
+                            bytesSinceLastEmit += bytesRead
+
+                            // Enforce file size limit during streaming
+                            if (currentDownloadedBytes > ContentValidator.getMaxFileSize()) {
+                                throw IOException("File size exceeded maximum limit (5 GB).")
+                            }
+
+                            if (bytesSinceLastEmit >= emitThreshold) {
+                                emit(DownloadProgress(currentDownloadedBytes, totalBytes, DownloadStatus.DOWNLOADING))
+                                bytesSinceLastEmit = 0L
+                            }
+                        }
+                        stream.flush()
+                    }
+                }
+
+                emit(DownloadProgress(currentDownloadedBytes, totalBytes, DownloadStatus.COMPLETED))
             }
-
-            // Close streams
-            outputStream.flush()
-            outputStream.close()
-            inputStream.close()
-
-            Log.d("DownloadManager", "Download completed successfully")
-
-            // Emit completion
-            emit(DownloadProgress(
-                downloadedBytes = currentDownloadedBytes,
-                totalBytes = totalBytes,
-                status = DownloadStatus.COMPLETED
-            ))
-
-        } catch (e: IOException) {
-            Log.e("DownloadManager", "IOException during download", e)
-            // Get current file size if it exists (preserve progress)
-            val file = File(getDownloadDirectory(), downloadItem.fileName)
-            val currentSize = if (file.exists()) file.length() else 0L
-
-            emit(DownloadProgress(
-                downloadedBytes = currentSize,
-                totalBytes = downloadItem.totalSize,
-                status = DownloadStatus.FAILED,
-                error = "Network error - Download paused. You can resume when network is restored."
-            ))
+        } catch (e: SecurityException) {
+            val uriString = downloadItem.uri ?: downloadItem.filePath
+            storageManager.delete(uriString)
+            emit(DownloadProgress(0, downloadItem.totalSize, DownloadStatus.FAILED, e.message ?: "Security violation"))
+        }
+ catch (e: IOException) {
+            val uriString = downloadItem.uri ?: downloadItem.filePath
+            val currentSize = if (storageManager.exists(uriString)) storageManager.getLength(uriString) else 0L
+            emit(DownloadProgress(currentSize, downloadItem.totalSize, DownloadStatus.FAILED, "Network error during download"))
         } catch (e: Exception) {
-            Log.e("DownloadManager", "Exception during download", e)
-            // Get current file size if it exists (preserve progress)
-            val file = File(getDownloadDirectory(), downloadItem.fileName)
-            val currentSize = if (file.exists()) file.length() else 0L
-
-            emit(DownloadProgress(
-                downloadedBytes = currentSize,
-                totalBytes = downloadItem.totalSize,
-                status = DownloadStatus.FAILED,
-                error = "Error: ${e.message} - You can retry the download."
-            ))
+            if (e is kotlinx.coroutines.CancellationException) {
+                // Handle cancellation: delete partial file
+                val uriString = downloadItem.uri ?: downloadItem.filePath
+                storageManager.delete(uriString)
+                emit(DownloadProgress(0, downloadItem.totalSize, DownloadStatus.CANCELLED))
+            } else {
+                val uriString = downloadItem.uri ?: downloadItem.filePath
+                val currentSize = if (storageManager.exists(uriString)) storageManager.getLength(uriString) else 0L
+                emit(DownloadProgress(currentSize, downloadItem.totalSize, DownloadStatus.FAILED, "Unexpected error during download"))
+            }
         }
     }.flowOn(Dispatchers.IO)
 
-    /**
-     * Get download directory
-     * Uses public Downloads folder so users can easily find their downloaded files
-     * This requires WRITE_EXTERNAL_STORAGE permission on Android 9 and below
-     * On Android 10+ with requestLegacyExternalStorage=true or Android 11+ with MANAGE_EXTERNAL_STORAGE
-     */
     fun getDownloadDirectory(): File {
-        // Always use public Downloads folder for user accessibility
-        val downloadsDir = Environment.getExternalStoragePublicDirectory(
-            Environment.DIRECTORY_DOWNLOADS
-        )
-        return File(downloadsDir, "FileDownloadManager")
+        return DownloadStoragePaths.getDownloadDirectory().apply { mkdirs() }
     }
 
-    /**
-     * Get file size from URL (HEAD request)
-     * Used to show file size before download
-     */
-    suspend fun getFileSize(url: String): Long {
-        return try {
-            val request = Request.Builder()
-                .url(url)
-                .head()
-                .build()
+    private fun hasEnoughStorage(directory: File, requiredBytes: Long): Boolean {
+        if (requiredBytes <= 0L) return true
 
-            val response = okHttpClient.newCall(request).execute()
-            response.body?.contentLength() ?: 0L
-        } catch (e: Exception) {
-            0L
-        }
-    }
-
-    /**
-     * Check if URL is accessible
-     */
-    suspend fun isUrlAccessible(url: String): Boolean {
-        return try {
-            val request = Request.Builder()
-                .url(url)
-                .head()
-                .build()
-
-            val response = okHttpClient.newCall(request).execute()
-            response.isSuccessful
-        } catch (e: Exception) {
-            false
-        }
+        val statFs = StatFs(directory.absolutePath)
+        return statFs.availableBytes > requiredBytes + STORAGE_SAFETY_MARGIN_BYTES
     }
 }
 
+/**
+ * Decides whether a redirect from [requestUrl] to [locationHeader] should be blocked.
+ *
+ * Returns a rejection reason (suitable for throwing as an IOException message) if the redirect
+ * must be blocked, or `null` if it's allowed. This is deliberately a pure function of plain
+ * values - no OkHttp chain/response involved - so it can be unit tested directly (see
+ * RedirectSecurityTest) without needing to stand up a real HTTPS MockWebServer, which is
+ * meaningfully more setup and was never actually done here (the previous test targeted a
+ * plain-HTTP MockWebServer, so the one HTTPS-downgrade case it claimed to cover was never
+ * really exercised end to end).
+ */
+private val URI_SCHEME_PATTERN = Regex("^([a-zA-Z][a-zA-Z0-9+.\\-]*):")
+
+internal fun resolveRedirectRejection(requestUrl: okhttp3.HttpUrl, locationHeader: String): String? {
+    // A Location value with its own explicit scheme (e.g. "file:///etc/passwd",
+    // "javascript:...", "content://...") is absolute and must never be resolved against
+    // requestUrl. We detect that directly via RFC 3986 scheme syntax rather than relying on
+    // HttpUrl.resolve(), which only understands http/https and simply returns null for
+    // anything else - which would otherwise fall through to "can't resolve => allow" below and
+    // silently let an unsupported-scheme redirect through instead of rejecting it.
+    val explicitScheme = URI_SCHEME_PATTERN.find(locationHeader)?.groupValues?.get(1)
+
+    if (explicitScheme != null &&
+        !explicitScheme.equals("http", ignoreCase = true) &&
+        !explicitScheme.equals("https", ignoreCase = true)
+    ) {
+        return "Redirect to unsupported scheme is not allowed"
+    }
+
+    val finalUrl = if (explicitScheme != null) {
+        locationHeader
+    } else {
+        // No explicit scheme => a relative reference; resolve it against the request URL, which
+        // is always http/https (that's the only thing HttpUrl can represent). A null result here
+        // means the value couldn't be parsed as a relative reference at all, so fail closed.
+        requestUrl.resolve(locationHeader)?.toString()
+            ?: return "Redirect to unsupported scheme is not allowed"
+    }
+
+    if (requestUrl.isHttps && finalUrl.startsWith("http://", ignoreCase = true)) {
+        return "HTTPS to HTTP redirect is not allowed"
+    }
+
+    return null
+}
+
+/**
+ * Builds the OkHttpClient used for all downloads, including the redirect-scheme guard.
+ *
+ * This is a top-level `internal` function (rather than inline inside [DownloadManager]) so
+ * tests can build and exercise the *exact* production client instead of keeping a
+ * hand-maintained duplicate that can silently drift out of sync with the real thing - which is
+ * what let the redirect-downgrade protection ship non-functional in the first place
+ * (RedirectSecurityTest previously built its own separate client with an empty validation stub).
+ */
+internal fun createSecureDownloadHttpClient(): OkHttpClient = OkHttpClient.Builder()
+    .connectTimeout(30, TimeUnit.SECONDS)
+    .readTimeout(30, TimeUnit.SECONDS)
+    .writeTimeout(30, TimeUnit.SECONDS)
+    .followRedirects(true)
+    // Belt-and-suspenders: never silently follow a redirect that changes http<->https.
+    // Combined with the network interceptor below, which additionally blocks redirects to
+    // non-http(s) schemes (file://, content://, javascript:, ...).
+    .followSslRedirects(false)
+    .addNetworkInterceptor { chain ->
+        // A NETWORK interceptor (not an application interceptor / addInterceptor) is required
+        // here: addInterceptor() only ever sees the final response after OkHttp has already
+        // followed any redirects internally, so response.isRedirect there would essentially
+        // never be true. addNetworkInterceptor() runs once per physical request, including the
+        // request to a redirect's target, before OkHttp decides to follow it.
+        val request = chain.request()
+        val response = chain.proceed(request)
+
+        if (response.isRedirect) {
+            response.header("Location")?.let { location ->
+                resolveRedirectRejection(request.url, location)?.let { reason ->
+                    response.close()
+                    throw IOException(reason)
+                }
+            }
+        }
+
+        response
+    }
+    .build()

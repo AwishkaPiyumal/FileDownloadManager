@@ -3,6 +3,7 @@ package com.piumal.filedownloadmanager.data.settings
 import android.content.Context
 import android.content.SharedPreferences
 import com.piumal.filedownloadmanager.domain.repository.SettingsRepository
+import com.piumal.filedownloadmanager.util.Logger
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,6 +27,8 @@ class SettingsRepositoryImpl @Inject constructor(
         private const val KEY_HIDDEN_COMPLETED_IDS = "hidden_completed_ids"
         private const val KEY_NOTIFY_COMPLETION = "notify_download_completion"
         private const val KEY_NOTIFY_FAILURE = "notify_download_failure"
+        private const val KEY_VIBRATE = "notification_vibrate"
+        private const val KEY_LIGHT = "notification_light"
         private const val KEY_PARALLEL_DOWNLOAD = "parallel_download"
         private const val KEY_AUTO_FETCH_URL = "auto_fetch_url"
         private const val KEY_ASK_DOWNLOAD_FOLDER = "ask_download_folder"
@@ -55,6 +58,12 @@ class SettingsRepositoryImpl @Inject constructor(
     private val _notifyFailure = MutableStateFlow(prefs.getBoolean(KEY_NOTIFY_FAILURE, true))
     private val notifyFailure = _notifyFailure.asStateFlow()
 
+    private val _vibrate = MutableStateFlow(prefs.getBoolean(KEY_VIBRATE, true))
+    private val vibrate = _vibrate.asStateFlow()
+
+    private val _light = MutableStateFlow(prefs.getBoolean(KEY_LIGHT, true))
+    private val light = _light.asStateFlow()
+
     private val _parallelDownloadLimit = MutableStateFlow(prefs.getInt(KEY_PARALLEL_DOWNLOAD, DEFAULT_PARALLEL_LIMIT))
     private val parallelDownloadLimit = _parallelDownloadLimit.asStateFlow()
 
@@ -65,12 +74,15 @@ class SettingsRepositoryImpl @Inject constructor(
             KEY_HIDDEN_COMPLETED_IDS -> _hiddenCompletedIds.value = readHiddenIds()
             KEY_NOTIFY_COMPLETION -> _notifyCompletion.value = sp.getBoolean(KEY_NOTIFY_COMPLETION, true)
             KEY_NOTIFY_FAILURE -> _notifyFailure.value = sp.getBoolean(KEY_NOTIFY_FAILURE, true)
+            KEY_VIBRATE -> _vibrate.value = sp.getBoolean(KEY_VIBRATE, true)
+            KEY_LIGHT -> _light.value = sp.getBoolean(KEY_LIGHT, true)
             KEY_PARALLEL_DOWNLOAD -> _parallelDownloadLimit.value = sp.getInt(KEY_PARALLEL_DOWNLOAD, DEFAULT_PARALLEL_LIMIT)
         }
     }
 
     init {
         prefs.registerOnSharedPreferenceChangeListener(listener)
+        Logger.d("SettingsRepository", "Init: SharedPreference listener registered")
     }
 
     override fun observeAutoRemoveCompleted(): Flow<Boolean> = autoRemoveCompleted
@@ -88,6 +100,8 @@ class SettingsRepositoryImpl @Inject constructor(
 
     override fun observeNotifyDownloadCompletion(): Flow<Boolean> = notifyCompletion
     override fun observeNotifyDownloadFailure(): Flow<Boolean> = notifyFailure
+    override fun observeVibrate(): Flow<Boolean> = vibrate
+    override fun observeLight(): Flow<Boolean> = light
 
     override fun getParallelDownloadLimit(): Int = prefs.getInt(KEY_PARALLEL_DOWNLOAD, DEFAULT_PARALLEL_LIMIT)
     override fun observeParallelDownloadLimit(): Flow<Int> = parallelDownloadLimit
@@ -95,3 +109,4 @@ class SettingsRepositoryImpl @Inject constructor(
     override fun isAutoFetchUrlEnabled(): Boolean = prefs.getBoolean(KEY_AUTO_FETCH_URL, true)
     override fun isAskDownloadFolderEnabled(): Boolean = prefs.getBoolean(KEY_ASK_DOWNLOAD_FOLDER, false)
 }
+

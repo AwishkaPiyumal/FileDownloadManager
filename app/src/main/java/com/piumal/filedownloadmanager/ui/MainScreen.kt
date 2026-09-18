@@ -16,7 +16,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,6 +31,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.piumal.filedownloadmanager.ui.components.AppDrawer
 import com.piumal.filedownloadmanager.ui.downloads.components.MoreOptionsMenu
+import com.piumal.filedownloadmanager.ui.downloads.components.TermsOfServiceDialog
 import com.piumal.filedownloadmanager.ui.downloads.viewmodel.MoreOptionsViewModel
 import com.piumal.filedownloadmanager.ui.navigation.NavigationGraph
 import kotlinx.coroutines.launch
@@ -42,18 +46,8 @@ fun getScreenTitle(route: String): String {
         "settings" -> "Settings"
         "help" -> "Help & Support"
         "info" -> "About"
-        "download_settings" -> "Download Settings"
-        "notification_settings" -> "Notification"
-        "advanced_settings" -> "Advanced Settings"
         else -> "File Download Manager"
     }
-}
-
-/**
- * Check if the current route is a settings detail screen
- */
-fun isSettingsDetailScreen(route: String): Boolean {
-    return route in listOf("download_settings", "notification_settings", "advanced_settings")
 }
 
 @Composable
@@ -71,6 +65,18 @@ fun MainScreen(
     val currentRoute = currentBackStack?.destination?.route ?: ""
     val context = LocalContext.current
 
+    // Show the Terms of Service once, on first launch (see CopyrightWarningDialog.kt, which
+    // defines TermsOfServiceDialog - it was previously defined but never actually shown
+    // anywhere in the app despite a comment there calling it a Google Play requirement).
+    // Kept in its own small SharedPreferences file, independent of SettingsRepository/the DI
+    // graph, so this gate is simple and self-contained.
+    val legalPrefs = remember {
+        context.getSharedPreferences("legal_prefs", android.content.Context.MODE_PRIVATE)
+    }
+    var showTermsDialog by remember {
+        mutableStateOf(!legalPrefs.getBoolean("has_accepted_terms", false))
+    }
+
     // Collect menu state from ViewModel
     val isMenuExpanded by moreOptionsViewModel.isMenuExpanded.collectAsState()
 
@@ -84,6 +90,13 @@ fun MainScreen(
     LaunchedEffect(Unit) {
         moreOptionsViewModel.toastMessage.collect { message ->
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Observe navigation events from MoreOptionsViewModel
+    LaunchedEffect(Unit) {
+        moreOptionsViewModel.navigateTo.collect { route ->
+            navController.navigate(route)
         }
     }
 
@@ -127,35 +140,18 @@ fun MainScreen(
                         },
 
                         navigationIcon = {
-                            // Show close icon for settings detail screens, menu icon otherwise
-                            if (isSettingsDetailScreen(currentRoute)) {
-                                IconButton(
-                                    onClick = { navController.popBackStack() },
-                                    modifier = Modifier
-                                        .fillMaxHeight()
-                                        .padding(start = 16.dp, end = 4.dp)
-                                ) {
-                                    Icon(
-                                        painter = painterResource(id = com.piumal.filedownloadmanager.R.drawable.close_24px),
-                                        contentDescription = "Close",
-                                        tint = MaterialTheme.colorScheme.onPrimary,
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                }
-                            } else {
-                                IconButton(
-                                    onClick = { scope.launch { drawerState.open() } },
-                                    modifier = Modifier
-                                        .fillMaxHeight()
-                                        .padding(start = 16.dp, end = 4.dp)
-                                ) {
-                                    Icon(
-                                        painter = painterResource(id = com.piumal.filedownloadmanager.R.drawable.menu_24px),
-                                        contentDescription = "Menu",
-                                        tint = MaterialTheme.colorScheme.onPrimary,
-                                        modifier = Modifier.size(35.dp)
-                                    )
-                                }
+                            IconButton(
+                                onClick = { scope.launch { drawerState.open() } },
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .padding(start = 16.dp, end = 4.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = com.piumal.filedownloadmanager.R.drawable.menu_24px),
+                                    contentDescription = "Menu",
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(35.dp)
+                                )
                             }
                         },
                         actions = {
@@ -178,7 +174,7 @@ fun MainScreen(
                                 }
                             }
                             // Show more_vert icon only on downloads screen and not in selection mode
-                            else if (currentRoute == "downloads" && !isSelectionModeActive) {
+                            else if (currentRoute == "downloads") {
                                 // Box wrapper to position the dropdown menu correctly
                                 Box {
                                     IconButton(
@@ -224,5 +220,21 @@ fun MainScreen(
                 content(navController, moreOptionsViewModel)
             }
         }
+    }
+
+    if (showTermsDialog) {
+        TermsOfServiceDialog(
+            onAccept = {
+                legalPrefs.edit().putBoolean("has_accepted_terms", true).apply()
+                showTermsDialog = false
+            },
+            onReject = {
+                // Dismiss without persisting acceptance, so it's shown again next launch.
+                // If your compliance posture needs a hard gate instead (e.g. closing the app
+                // on reject), that decision belongs here - this keeps the softer default so a
+                // declined dialog doesn't lock a user out unexpectedly.
+                showTermsDialog = false
+            }
+        )
     }
 }
