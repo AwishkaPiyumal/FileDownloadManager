@@ -110,7 +110,7 @@ fun CopyrightWarningDialog(
                             containerColor = MaterialTheme.colorScheme.error
                         )
                     ) {
-                        Text("Accept")
+                        Text("I Accept Responsibility")
                     }
                 }
             }

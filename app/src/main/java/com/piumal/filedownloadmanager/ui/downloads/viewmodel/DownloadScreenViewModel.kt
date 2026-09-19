@@ -579,24 +579,10 @@ class DownloadScreenViewModel @Inject constructor(
      * Extract the audio track from a completed video download into its own new download entry.
      * Purely local processing - see ExtractAudioUseCase/AudioExtractor for details.
      */
-    /**
-     * Called when the user taps "Extract audio only" on a video - records which download is
-     * awaiting a bitrate choice; the actual extraction (extractAudio below) runs once they
-     * confirm a bitrate in Mp3BitratePickerDialog.
-     */
-    fun requestExtractAudio(id: String) {
-        _uiState.update { it.copy(pendingAudioExtractionId = id) }
-    }
-
-    /** Dismiss the bitrate picker without extracting anything. */
-    fun cancelAudioExtraction() {
-        _uiState.update { it.copy(pendingAudioExtractionId = null) }
-    }
-
-    fun extractAudio(id: String, bitrate: com.piumal.filedownloadmanager.util.Mp3Bitrate) {
+    fun extractAudio(id: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(pendingAudioExtractionId = null, isExtractingAudio = true) }
-            extractAudioUseCase(id, bitrate)
+            _uiState.update { it.copy(isExtractingAudio = true) }
+            extractAudioUseCase(id)
                 .onSuccess { audioItem ->
                     _uiState.update {
                         it.copy(
@@ -997,7 +983,6 @@ data class DownloadScreenUiState(
     val successMessage: String? = null,
     val downloadError: String? = null,
     val isExtractingAudio: Boolean = false,
-    val pendingAudioExtractionId: String? = null,
     // Selection mode states
     val isSelectionMode: Boolean = false,
     val selectedDownloadIds: Set<String> = emptySet()

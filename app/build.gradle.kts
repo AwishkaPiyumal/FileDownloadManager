@@ -29,7 +29,7 @@ android {
         minSdk = 24
         targetSdk = 36
         versionCode =5
-        versionName = "1.2.0"
+        versionName = "1.2.2"
 
         buildConfigField("String", "API_BASE_URL", "\"${localProperty("API_BASE_URL").asBuildConfigLiteral()}\"")
         buildConfigField("String", "API_KEY", "\"${localProperty("API_KEY").asBuildConfigLiteral()}\"")
@@ -116,8 +116,5 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
 
-    implementation("com.github.naman14:TAndroidLame:1.1") {
-        exclude(group = "com.android.support", module = "appcompat-v7")
-        exclude(group = "com.android.support", module = "support-v4")
-    }
+
 }

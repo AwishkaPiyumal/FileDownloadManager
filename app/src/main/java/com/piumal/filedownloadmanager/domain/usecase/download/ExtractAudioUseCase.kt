@@ -7,26 +7,25 @@ import com.piumal.filedownloadmanager.domain.util.DownloadStoragePaths
 import com.piumal.filedownloadmanager.domain.util.FileNameSanitizer
 import com.piumal.filedownloadmanager.util.AudioExtractor
 import com.piumal.filedownloadmanager.util.MediaFileTypes
-import com.piumal.filedownloadmanager.util.Mp3Bitrate
 import java.io.File
 import javax.inject.Inject
 
 /**
- * Extracts just the audio track from an already-downloaded video into a new, separate MP3 file
- * at the chosen bitrate - purely local processing on a file the user already has (see
- * AudioExtractor's doc comment for why this doesn't touch the network or any remote platform).
- * The result is inserted as its own completed download, so it shows up in the list - and
- * inherits Open/Share/Delete/etc. - the same as anything else there.
+ * Extracts just the audio track from an already-downloaded video into a new, separate file -
+ * purely local processing on a file the user already has (see AudioExtractor's doc comment for
+ * why this doesn't touch the network or any remote platform - it's audio/video processing, not
+ * a way to fetch anything new). The result is inserted as its own completed download, so it
+ * shows up in the list - and inherits Open/Share/Delete/etc. - the same as anything else there.
  */
 interface ExtractAudioUseCase {
-    suspend operator fun invoke(sourceDownloadId: String, bitrate: Mp3Bitrate): Result<DownloadItem>
+    suspend operator fun invoke(sourceDownloadId: String): Result<DownloadItem>
 }
 
 class ExtractAudioUseCaseImpl @Inject constructor(
     private val repository: DownloadRepository
 ) : ExtractAudioUseCase {
 
-    override suspend fun invoke(sourceDownloadId: String, bitrate: Mp3Bitrate): Result<DownloadItem> = runCatching {
+    override suspend fun invoke(sourceDownloadId: String): Result<DownloadItem> = runCatching {
         val source = repository.getDownloadById(sourceDownloadId)
             ?: throw IllegalArgumentException("Download not found")
 
@@ -43,11 +42,11 @@ class ExtractAudioUseCaseImpl @Inject constructor(
         }
 
         val outputDir = DownloadStoragePaths.getDownloadDirectory().apply { mkdirs() }
-        val sanitizedName = FileNameSanitizer.sanitize("${sourceFile.nameWithoutExtension}.mp3")
+        val sanitizedName = FileNameSanitizer.sanitize("${sourceFile.nameWithoutExtension}.m4a")
         val outputFileName = uniqueFileNameIn(outputDir, sanitizedName)
         val outputFile = File(outputDir, outputFileName)
 
-        val extractedFile = AudioExtractor.extractAudioAsMp3(sourceFile, outputFile, bitrate).getOrThrow()
+        val extractedFile = AudioExtractor.extractAudioTrack(sourceFile, outputFile).getOrThrow()
 
         val audioItem = DownloadItem(
             id = System.currentTimeMillis().toString(),
