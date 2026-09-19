@@ -1,15 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<data-extraction-rules>
+<data-extraction-rules xmlns:tools="http://schemas.android.com/tools">
     <cloud-backup>
         <!-- Exclude databases & files for cloud backup -->
-        <exclude domain="database" path="." />
-        <exclude domain="external" path="." />
-        <exclude domain="root" path="no_backup" />
+        <exclude domain="database" path="."
+            tools:ignore="FullBackupContent" />
+        <exclude domain="external" path="."
+            tools:ignore="FullBackupContent" />
+        <exclude domain="root" path="no_backup"
+            tools:ignore="FullBackupContent" />
         <include domain="sharedpref" path="." />
     </cloud-backup>
     <device-transfer>
         <!-- Allow slightly more during device transfers but exclude raw downloads to keep transfer sizes light -->
-        <exclude domain="external" path="." />
+        <exclude domain="external" path="."
+            tools:ignore="FullBackupContent" />
         <include domain="sharedpref" path="." />
         <include domain="database" path="." />
     </device-transfer>
