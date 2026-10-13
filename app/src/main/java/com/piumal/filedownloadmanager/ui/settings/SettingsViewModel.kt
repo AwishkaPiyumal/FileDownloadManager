@@ -41,6 +41,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         private const val KEY_LIGHT = "notification_light"
         // Advanced
         private const val KEY_MAX_RETRY_COUNT = "max_retry_count"
+        private const val KEY_DOWNLOAD_SETTINGS_EXPANDED = "ui_download_settings_expanded"
+        private const val KEY_NOTIFICATION_EXPANDED = "ui_notification_expanded"
+        private const val KEY_ADVANCED_SETTINGS_EXPANDED = "ui_advanced_settings_expanded"
     }
 
     private val sharedPreferences = application.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -73,23 +76,32 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     vibrateEnabled = sharedPreferences.getBoolean(KEY_VIBRATE, true),
                     lightEnabled = sharedPreferences.getBoolean(KEY_LIGHT, true),
                     // Advanced
-                    maxRetryCount = sharedPreferences.getInt(KEY_MAX_RETRY_COUNT, 3)
+                    maxRetryCount = sharedPreferences.getInt(KEY_MAX_RETRY_COUNT, 3),
+                    isDownloadSettingsExpanded = sharedPreferences.getBoolean(KEY_DOWNLOAD_SETTINGS_EXPANDED, true),
+                    isNotificationExpanded = sharedPreferences.getBoolean(KEY_NOTIFICATION_EXPANDED, true),
+                    isAdvancedSettingsExpanded = sharedPreferences.getBoolean(KEY_ADVANCED_SETTINGS_EXPANDED, false)
                 )
             }
         }
     }
 
-    // Section toggle functions
+    // Section toggle functions (each also persists the new state, so it survives app restarts)
     fun toggleDownloadSettingsExpanded() {
-        _uiState.update { it.copy(isDownloadSettingsExpanded = !it.isDownloadSettingsExpanded) }
+        val newValue = !_uiState.value.isDownloadSettingsExpanded
+        _uiState.update { it.copy(isDownloadSettingsExpanded = newValue) }
+        saveBoolean(KEY_DOWNLOAD_SETTINGS_EXPANDED, newValue)
     }
 
     fun toggleNotificationExpanded() {
-        _uiState.update { it.copy(isNotificationExpanded = !it.isNotificationExpanded) }
+        val newValue = !_uiState.value.isNotificationExpanded
+        _uiState.update { it.copy(isNotificationExpanded = newValue) }
+        saveBoolean(KEY_NOTIFICATION_EXPANDED, newValue)
     }
 
     fun toggleAdvancedSettingsExpanded() {
-        _uiState.update { it.copy(isAdvancedSettingsExpanded = !it.isAdvancedSettingsExpanded) }
+        val newValue = !_uiState.value.isAdvancedSettingsExpanded
+        _uiState.update { it.copy(isAdvancedSettingsExpanded = newValue) }
+        saveBoolean(KEY_ADVANCED_SETTINGS_EXPANDED, newValue)
     }
 
     // Dialog visibility functions

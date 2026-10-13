@@ -109,8 +109,9 @@ fun MainScreen(
                 onNavigate = { route ->
                     val startId = runCatching { navController.graph.startDestinationId }.getOrNull()
                     navController.navigate(route) {
-                        startId?.let { popUpTo(it) }
+                        startId?.let { popUpTo(it) { saveState = true } }
                         launchSingleTop = true
+                        restoreState = true
                     }
                 },
                 onCloseDrawer = { scope.launch { drawerState.close() } }
